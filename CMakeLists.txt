@@ -11,6 +11,8 @@ add_library(nurbs
     src/bspline_curve.cpp
     src/bspline_surface.cpp
     src/nurbs_surface.cpp
+    src/math_utils.cpp
+    src/test_closest_point.cpp
 )
 
 target_include_directories(nurbs PUBLIC src)

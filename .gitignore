@@ -20,5 +20,8 @@ Makefile
 # Editor/OS files
 *.swp
 *.DS_Store
+plots/data/*
+
+
 
 
