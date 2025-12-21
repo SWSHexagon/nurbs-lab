@@ -1,0 +1,8 @@
+{
+    "CMakeToolsGenerator": "Ninja",
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "files.associations": {
+        "*.hpp": "cpp"
+    },
+    "editor.formatOnSave": true
+}
