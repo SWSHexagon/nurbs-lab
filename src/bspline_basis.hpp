@@ -9,6 +9,12 @@ public:
     // Evaluate N_i^p(u)
     double evaluate(int i, int p, double u) const;
 
+    // Derivatives
+    double derivative(int i, int p, double u) const;
+    double derivative(int i, double u) const { return derivative(i, degree_, u); }
+    double second_derivative(int i, int p, double u) const;
+    double second_derivative(int i, double u) const { return second_derivative(i, degree_, u); }
+
     int degree() const { return degree_; }
     const std::vector<double> &knots() const { return knots_; }
 
@@ -17,6 +23,8 @@ public:
 
     // Number of basis functions == number of control points this basis expects
     int numBasis() const { return static_cast<int>(knots_.size()) - degree_ - 1; }
+
+    void DumpInfo(const char *msg) const;
 
 private:
     int degree_;

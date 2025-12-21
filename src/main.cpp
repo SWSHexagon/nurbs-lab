@@ -1,5 +1,6 @@
 #include "bspline_basis.hpp"
 #include "bspline_surface.hpp"
+#include "test_closest_point.hpp"
 #include <fstream>
 #include <array>
 #include <vector>
@@ -120,9 +121,9 @@ int main()
     // 4×4 tilted curved control net
     std::vector<std::vector<std::array<double, 3>>> ctrl(5, std::vector<std::array<double, 3>>(5));
 
-    const double ax = 0.4;  // tilt in x
-    const double ay = -0.2; // tilt in y
-    const double k = 0.5;   // curvature strength
+    const double ax = 0;   // tilt in x
+    const double ay = 0;   // tilt in y
+    const double k = 0.25; // curvature strength
 
     std::ofstream ctrlnet("plots/data/ctrl_net.xyz");
     if (!ctrlnet)
@@ -135,9 +136,9 @@ int main()
     {
         for (int j = 0; j < 5; ++j)
         {
-            double x = 2.0 - double(i);
-            double y = 2.0 - double(j);
-            double z = 10 - k * (x * x + y * y) + ax * x + ay * y;
+            double x = double(i) - 2.0;
+            double y = double(j) - 2.0;
+            double z = k * (x * x + y * y) + ax * x + ay * y;
             ctrl[i][j] = {x, y, z};
             ctrlnet << x << " " << y << " " << z << "\n";
         }
@@ -187,6 +188,33 @@ int main()
 
     std::cout << "Wrote plots/data/surface.csv and tsurface.xyz\n";
     std::cout << "Demo complete.  Wrote " << ptCount << " points.\n";
+
+    auto Su = surf.derivative_u(0.5, 0.5);
+    auto Sv = surf.derivative_v(0.5, 0.5);
+    auto N = surf.normal(0.5, 0.5);
+
+    std::cout << std::endl
+              << "Derivatives at (u,v) = (0.5,0.5):" << std::endl;
+    std::cout << "Su = " << Su[0] << "," << Su[1] << "," << Su[2] << "\n";
+    std::cout << "Sv = " << Sv[0] << "," << Sv[1] << "," << Sv[2] << "\n";
+    std::cout << "N  = " << N[0] << "," << N[1] << "," << N[2] << "\n";
+
+    auto c = surf.curvature(0.5, 0.5);
+    std::cout << std::endl
+              << "Curvatures at (u,v) = (0.5,0.5):" << std::endl;
+    std::cout << "K = " << c.K << " H = " << c.H << " k1=" << c.k1 << " k2=" << c.k2 << "\n";
+
+    std::cout << std::endl
+              << "Curvatures at (u,v) = (0.5,0.5):" << std::endl;
+    std::cout << "K = " << c.K << " H = " << c.H << " k1=" << c.k1 << " k2=" << c.k2 << "\n";
+
+    std::cout << std::endl
+              << "Surface info dump:" << std::endl;
+    surf.DumpInfo();
+
+    std::cout << std::endl
+              << "=== Running Closest Point Test ===" << std::endl;
+    test_closest_point(surf);
 
     return 0;
 }
