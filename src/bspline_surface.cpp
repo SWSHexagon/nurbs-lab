@@ -3,6 +3,12 @@
 
 using namespace MathUtils;
 
+const double BSplineSurface::LAMBDA_MIN{1e-12};
+const double BSplineSurface::LAMBDA_LARGE{1e6};
+const double BSplineSurface::LAMBDA_MAX{1e8};
+const double BSplineSurface::LAMBDA_SEED{1e-3};
+const double BSplineSurface::NEAR_ZERO{1e-12};
+
 BSplineSurface::BSplineSurface(
     BSplineBasis u_basis,
     BSplineBasis v_basis,
@@ -152,7 +158,7 @@ std::array<double, 3> BSplineSurface::second_derivative_uv(double u, double v) c
     return Suv;
 }
 
-std::array<double, 3> BSplineSurface::normal(double u, double v) const
+std::array<double, 3> BSplineSurface::normal(double u, double v, bool unitize /*= true*/) const
 {
     auto Su = derivative_u(u, v);
     auto Sv = derivative_v(u, v);
@@ -163,7 +169,10 @@ std::array<double, 3> BSplineSurface::normal(double u, double v) const
     n[1] = Su[2] * Sv[0] - Su[0] * Sv[2];
     n[2] = Su[0] * Sv[1] - Su[1] * Sv[0];
 
-    return (normalize(n));
+    if (!unitize)
+        return (n);
+    else
+        return (normalize(n));
 }
 
 inline void BSplineSurface::project_to_domain(double &u, double &v)
@@ -473,6 +482,9 @@ BSplineSurface::SurfaceDifferential BSplineSurface::differential(double u, doubl
     d.f = dot(d.Suv, d.N);
     d.g = dot(d.Svv, d.N);
 
+    d.metricDet = d.E * d.G - d.F * d.F;
+    d.metricDegenerate = (d.metricDet < NEAR_ZERO);
+
     return d;
 }
 
@@ -482,11 +494,10 @@ BSplineSurface::Curvature BSplineSurface::curvature(double u, double v) const
 
     auto d = differential(u, v);
 
-    double denom = d.E * d.G - d.F * d.F;
+    if (d.metricDegenerate)
+        return (c); // degenerate metric (e.g. collapsed patch)
 
-    if (std::abs(denom) < 1e-14)
-        return c; // degenerate metric (e.g. collapsed patch)
-
+    double denom = d.metricDet;
     c.K = (d.e * d.g - d.f * d.f) / denom;
     c.H = (d.E * d.g - 2.0 * d.F * d.f + d.G * d.e) / (2.0 * denom);
 
@@ -501,7 +512,78 @@ BSplineSurface::Curvature BSplineSurface::curvature(double u, double v) const
     c.k2 = c.H - root;
     c.valid = true;
 
-    return c;
+    // --- Principal directions in UV ---
+    auto uv1 = principal_direction_uv(d, c.k1);
+    auto uv2 = principal_direction_uv(d, c.k2);
+
+    c.uv1 = uv1;
+    c.uv2 = uv2;
+
+    // --- Map to 3D ---
+    c.dir1 = combine_uv_to_3d(d, uv1);
+    c.dir2 = combine_uv_to_3d(d, uv2);
+
+    return (c);
+}
+
+std::array<double, 2> BSplineSurface::principal_direction_uv(
+    const SurfaceDifferential &d,
+    double k)
+{
+    double a = d.e - k * d.E;
+    double b = d.f - k * d.F;
+    double c = d.g - k * d.G;
+
+    std::array<double, 2> uv{0.0, 0.0};
+
+    // Choose a stable null-space vector for [a b; b c]
+    if (std::abs(a) + std::abs(b) > std::abs(b) + std::abs(c))
+    {
+        // Use (-b, a)
+        uv[0] = -b;
+        uv[1] = a;
+    }
+    else
+    {
+        // Use (-c, b)
+        uv[0] = -c;
+        uv[1] = b;
+    }
+
+    double len = std::sqrt(uv[0] * uv[0] + uv[1] * uv[1]);
+    if (len < NEAR_ZERO)
+    {
+        // Fallback: arbitrary direction
+        uv[0] = 1.0;
+        uv[1] = 0.0;
+    }
+    else
+    {
+        uv[0] /= len;
+        uv[1] /= len;
+    }
+
+    return (uv);
+}
+
+std::array<double, 3> BSplineSurface::combine_uv_to_3d(
+    const SurfaceDifferential &d,
+    const std::array<double, 2> &uv)
+{
+    std::array<double, 3> r{
+        uv[0] * d.Su[0] + uv[1] * d.Sv[0],
+        uv[0] * d.Su[1] + uv[1] * d.Sv[1],
+        uv[0] * d.Su[2] + uv[1] * d.Sv[2]};
+
+    double len = std::sqrt(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
+    if (len < 1e-14)
+        return {0.0, 0.0, 0.0};
+
+    r[0] /= len;
+    r[1] /= len;
+    r[2] /= len;
+
+    return (r);
 }
 
 void BSplineSurface::DumpInfo() const

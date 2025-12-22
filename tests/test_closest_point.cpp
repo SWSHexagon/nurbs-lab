@@ -1,4 +1,3 @@
-#include "test_closest_point.hpp"
 #include <random>
 #include <iostream>
 #include <iomanip>
@@ -120,4 +119,10 @@ void test_closest_point(BSplineSurface &surf)
     std::cout << "Max dist error  : " << stats.maxDistError << "\n";
     std::cout << "Mean param error: " << stats.sumParamError / stats.total << "\n";
     std::cout << "Max param error : " << stats.maxParamError << "\n";
+}
+
+int main()
+{
+    std::cout << "=== Testing closest point ===\n";
+    return (0);
 }

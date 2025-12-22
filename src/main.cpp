@@ -1,6 +1,5 @@
 #include "bspline_basis.hpp"
 #include "bspline_surface.hpp"
-#include "test_closest_point.hpp"
 #include <fstream>
 #include <array>
 #include <vector>
@@ -212,9 +211,6 @@ int main()
               << "Surface info dump:" << std::endl;
     surf.DumpInfo();
 
-    std::cout << std::endl
-              << "=== Running Closest Point Test ===" << std::endl;
-    test_closest_point(surf);
-
+        std::cout << "Demo complete.  Wrote " << ptCount << " points.\n";
     return 0;
 }

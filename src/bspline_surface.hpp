@@ -18,7 +18,7 @@ public:
     std::array<double, 3> second_derivative_uu(double u, double v) const;
     std::array<double, 3> second_derivative_vv(double u, double v) const;
     std::array<double, 3> second_derivative_uv(double u, double v) const;
-    std::array<double, 3> normal(double u, double v) const;
+    std::array<double, 3> normal(double u, double v, bool unitize = true) const;
 
     struct ClosestPointResult
     {
@@ -67,6 +67,8 @@ public:
         double e;
         double f;
         double g;
+        double metricDet;
+        bool metricDegenerate;
     };
 
     SurfaceDifferential differential(double u, double v) const;
@@ -78,6 +80,13 @@ public:
         double k1; // principal max
         double k2; // principal min
         bool valid;
+
+        std::array<double, 3> dir1; // principal direction for k1 (3D, unit)
+        std::array<double, 3> dir2; // principal direction for k2 (3D, unit)
+
+        // optional: UV-space directions
+        std::array<double, 2> uv1;
+        std::array<double, 2> uv2;
     };
 
     Curvature curvature(double u, double v) const;
@@ -89,10 +98,19 @@ private:
     BSplineBasis v_basis_;
     std::vector<std::vector<std::array<double, 3>>> ctrl_;
 
+    static const double LAMBDA_MIN;
+    static const double LAMBDA_LARGE;
+    static const double LAMBDA_MAX;
+    static const double LAMBDA_SEED;
+    static const double NEAR_ZERO;
+
     static void project_to_domain(double &u, double &v);
-    const double LAMBDA_MIN = 1e-12;
-    const double LAMBDA_LARGE = 1e6;
-    const double LAMBDA_MAX = 1e8;
-    const double LAMBDA_SEED = 1e-3;
-    const double NEAR_ZERO = 1e-12;
+
+    static std::array<double, 2> principal_direction_uv(
+        const SurfaceDifferential &d,
+        double k);
+
+    static std::array<double, 3> combine_uv_to_3d(
+        const SurfaceDifferential &d,
+        const std::array<double, 2> &uv);
 };
