@@ -8,6 +8,11 @@ struct Stats
 {
     int total = 0;
     int failures = 0;
+    int edgeCases = 0;
+    int stagnations = 0;
+    int divergences = 0;
+    int maxiterations = 0;
+    int iterations = 0;
     double maxDistError = 0.0;
     double sumDistError = 0.0;
     double maxParamError = 0.0;
@@ -23,7 +28,7 @@ void test_closest_point(BSplineSurface &surf)
     std::uniform_real_distribution<double> uni(0.0, 1.0);
     std::normal_distribution<double> noise(0.0, 0.05); // 5cm noise, adjust as needed
 
-    const int N = 2000; // number of random tests
+    const int N = 100000; // number of random tests
 
     for (int k = 0; k < N; ++k)
     {
@@ -47,9 +52,29 @@ void test_closest_point(BSplineSurface &surf)
         double v0 = uni(rng);
 
         // 5. Run LM closest-point
-        auto uv = surf.closest_point_LM(Q, u0, v0, 30, 1e-10);
-        double u_est = uv.first;
-        double v_est = uv.second;
+        auto result = surf.closest_point_LM(Q, u0, v0, 100, 1e-8);
+        double u_est = result.u;
+        double v_est = result.v;
+        stats.iterations += result.iterations;
+        if (result.status == BSplineSurface::ClosestPointResult::Status::Boundary)
+        {
+            stats.edgeCases++;
+        }
+        else if (result.status != BSplineSurface::ClosestPointResult::Status::Success)
+        {
+            if (result.status == BSplineSurface::ClosestPointResult::Status::MaxIterations)
+            {
+                stats.maxiterations++;
+            }
+            else if (result.status == BSplineSurface::ClosestPointResult::Status::Stagnation)
+            {
+                stats.stagnations++;
+            }
+            else if (result.status == BSplineSurface::ClosestPointResult::Status::Divergence)
+            {
+                stats.divergences++;
+            }
+        }
 
         // 6. Evaluate recovered point
         auto Pest = surf.evaluate(u_est, v_est);
@@ -84,10 +109,15 @@ void test_closest_point(BSplineSurface &surf)
 
     // Print summary
     std::cout << std::fixed << std::setprecision(6);
-    std::cout << "Total tests: " << stats.total << "\n";
-    std::cout << "Failures:    " << stats.failures << "\n";
-    std::cout << "Mean dist error: " << stats.sumDistError / stats.total << "\n";
-    std::cout << "Max dist error:  " << stats.maxDistError << "\n";
+    std::cout << "Total tests     : " << stats.total << "\n";
+    std::cout << "Failures        : " << stats.failures << "\n";
+    std::cout << "Edge cases      : " << stats.edgeCases << "\n";
+    std::cout << "Stagnations     : " << stats.stagnations << "\n";
+    std::cout << "Divergences     : " << stats.divergences << "\n";
+    std::cout << "Max iterations  : " << stats.maxiterations << "\n";
+    std::cout << "Avg Iterations  : " << double(stats.iterations) / stats.total << "\n";
+    std::cout << "Mean dist error : " << stats.sumDistError / stats.total << "\n";
+    std::cout << "Max dist error  : " << stats.maxDistError << "\n";
     std::cout << "Mean param error: " << stats.sumParamError / stats.total << "\n";
-    std::cout << "Max param error:  " << stats.maxParamError << "\n";
+    std::cout << "Max param error : " << stats.maxParamError << "\n";
 }

@@ -166,165 +166,290 @@ std::array<double, 3> BSplineSurface::normal(double u, double v) const
     return (normalize(n));
 }
 
-std::pair<double, double> BSplineSurface::closest_point(
-    const std::array<double, 3> &point,
-    double u0,
-    double v0,
-    int maxIter,
-    double tol) const
+inline void BSplineSurface::project_to_domain(double &u, double &v)
 {
-    double u = u0;
-    double v = v0;
-
-    for (int iter = 0; iter < maxIter; ++iter)
+    // If already inside the domain, nothing to do
+    if (u >= 0.0 && u <= 1.0 &&
+        v >= 0.0 && v <= 1.0)
     {
-        auto S = evaluate(u, v);
-        auto Su = derivative_u(u, v);
-        auto Sv = derivative_v(u, v);
-        auto Suu = second_derivative_uu(u, v);
-        auto Suv = second_derivative_uv(u, v);
-        auto Svv = second_derivative_vv(u, v);
-
-        std::array<double, 3> F = {S[0] - point[0], S[1] - point[1], S[2] - point[2]};
-
-        double Fu = Su[0] * F[0] + Su[1] * F[1] + Su[2] * F[2];
-        double Fv = Sv[0] * F[0] + Sv[1] * F[1] + Sv[2] * F[2];
-
-        if (std::sqrt(Fu * Fu + Fv * Fv) < tol)
-            break;
-
-        double Fuu = Suu[0] * F[0] + Suu[1] * F[1] + Suu[2] * F[2] + (Su[0] * Su[0] + Su[1] * Su[1] + Su[2] * Su[2]);
-
-        double Fvv = Svv[0] * F[0] + Svv[1] * F[1] + Svv[2] * F[2] + (Sv[0] * Sv[0] + Sv[1] * Sv[1] + Sv[2] * Sv[2]);
-
-        double Fuv = Suv[0] * F[0] + Suv[1] * F[1] + Suv[2] * F[2] + (Su[0] * Sv[0] + Su[1] * Sv[1] + Su[2] * Sv[2]);
-
-        double det = Fuu * Fvv - Fuv * Fuv;
-
-        if (std::abs(det) < 1e-14)
-            break;
-
-        double du = (-Fu * Fvv + Fv * Fuv) / det;
-        double dv = (-Fv * Fuu + Fu * Fuv) / det;
-
-        u += du;
-        v += dv;
-
-        // clamp to domain
-        u = std::max(0.0, std::min(1.0, u));
-        v = std::max(0.0, std::min(1.0, v));
-
-        if (std::sqrt(du * du + dv * dv) < tol)
-            break;
+        return;
     }
 
-    return {u, v};
+    // Case 1: Outside on the left or right → project to vertical edges
+    if (u < 0.0)
+        u = 0.0;
+    else if (u > 1.0)
+        u = 1.0;
+
+    // Case 2: Outside on the bottom or top → project to horizontal edges
+    if (v < 0.0)
+        v = 0.0;
+    else if (v > 1.0)
+        v = 1.0;
+
+    // At this point, (u,v) is guaranteed to be in the closed domain.
+    // The logic above naturally handles:
+    //   - corner projection
+    //   - edge projection
+    //   - interior no-op
 }
 
-std::pair<double, double> BSplineSurface::closest_point_LM(
+BSplineSurface::ClosestPointResult BSplineSurface::closest_point_LM(
     const std::array<double, 3> &point,
     double u0,
     double v0,
     int maxIter,
     double tol) const
 {
+    ClosestPointResult result;
+
     double u = u0;
     double v = v0;
 
-    double lambda = 1e-3; // initial damping
+    double u_best = u;
+    double v_best = v;
 
-    for (int iter = 0; iter < maxIter; ++iter)
+    auto S0 = evaluate(u, v);
+    std::array<double, 3> F0 = {
+        S0[0] - point[0],
+        S0[1] - point[1],
+        S0[2] - point[2]};
+    double f_best = 0.5 * (F0[0] * F0[0] + F0[1] * F0[1] + F0[2] * F0[2]);
+
+    double lambda = LAMBDA_SEED;
+    int iter = 0;
+
+    for (iter = 0; iter < maxIter; ++iter)
     {
         // Evaluate surface and derivatives
         auto S = evaluate(u, v);
         auto Su = derivative_u(u, v);
         auto Sv = derivative_v(u, v);
-        auto Suu = second_derivative_uu(u, v);
-        auto Suv = second_derivative_uv(u, v);
-        auto Svv = second_derivative_vv(u, v);
 
-        // Residual F = S - Q
-        std::array<double, 3> F = {S[0] - point[0], S[1] - point[1], S[2] - point[2]};
+        // Residual F = S - P
+        std::array<double, 3> F = {
+            S[0] - point[0],
+            S[1] - point[1],
+            S[2] - point[2]};
 
         // Gradient of 0.5||F||^2
         double Fu = Su[0] * F[0] + Su[1] * F[1] + Su[2] * F[2];
         double Fv = Sv[0] * F[0] + Sv[1] * F[1] + Sv[2] * F[2];
 
         double gradNorm = std::sqrt(Fu * Fu + Fv * Fv);
+        result.gradNorm = gradNorm;
+
         if (gradNorm < tol)
+        {
+            double f_here = 0.5 * (F[0] * F[0] + F[1] * F[1] + F[2] * F[2]);
+
+            if (f_here < f_best)
+            {
+                f_best = f_here;
+                u_best = u;
+                v_best = v;
+            }
+
+            bool finalOnBoundary =
+                (u <= tol || u >= 1.0 - tol ||
+                 v <= tol || v >= 1.0 - tol);
+
+            result.status = finalOnBoundary
+                                ? ClosestPointResult::Status::Boundary
+                                : ClosestPointResult::Status::Success;
+
             break;
+        }
 
-        // Hessian-like terms
-        double Fuu = Suu[0] * F[0] + Suu[1] * F[1] + Suu[2] * F[2] + (Su[0] * Su[0] + Su[1] * Su[1] + Su[2] * Su[2]);
-
-        double Fvv = Svv[0] * F[0] + Svv[1] * F[1] + Svv[2] * F[2] + (Sv[0] * Sv[0] + Sv[1] * Sv[1] + Sv[2] * Sv[2]);
-
-        double Fuv = Suv[0] * F[0] + Suv[1] * F[1] + Suv[2] * F[2] + (Su[0] * Sv[0] + Su[1] * Sv[1] + Su[2] * Sv[2]);
+        // Gauss–Newton Hessian approximation
+        double Huu = Su[0] * Su[0] + Su[1] * Su[1] + Su[2] * Su[2];
+        double Hvv = Sv[0] * Sv[0] + Sv[1] * Sv[1] + Sv[2] * Sv[2];
+        double Huv = Su[0] * Sv[0] + Su[1] * Sv[1] + Su[2] * Sv[2];
 
         // Damped Hessian
-        double a = Fuu + lambda;
-        double b = Fuv;
-        double c = Fuv;
-        double d = Fvv + lambda;
+        double a = Huu + lambda;
+        double b = Huv;
+        double c = Huv;
+        double d = Hvv + lambda;
 
-        // Robust determinant test (relative)
+        // Determinant check
         double det = a * d - b * c;
         double scale = std::max({std::abs(a), std::abs(b), std::abs(c), std::abs(d), 1.0});
 
-        if (std::abs(det) < 1e-12 * scale * scale)
+        if (std::abs(det) < NEAR_ZERO * scale * scale)
         {
-            // Matrix is effectively singular → increase damping and retry
+            // Gradient descent fallback
+            double alpha = 0.1; // small step
+            double du_gd = -alpha * Fu;
+            double dv_gd = -alpha * Fv;
+
+            double u_gd = u + du_gd;
+            double v_gd = v + dv_gd;
+            project_to_domain(u_gd, v_gd);
+
+            auto Sgd = evaluate(u_gd, v_gd);
+            std::array<double, 3> Fgd = {
+                Sgd[0] - point[0],
+                Sgd[1] - point[1],
+                Sgd[2] - point[2]};
+
+            double f_old = 0.5 * (F[0] * F[0] + F[1] * F[1] + F[2] * F[2]);
+            double f_gd = 0.5 * (Fgd[0] * Fgd[0] + Fgd[1] * Fgd[1] + Fgd[2] * Fgd[2]);
+
+            if (f_gd < f_old)
+            {
+                // Accept fallback step
+                u = u_gd;
+                v = v_gd;
+
+                // Update best-so-far as well
+                if (f_gd < f_best)
+                {
+                    f_best = f_gd;
+                    u_best = u_gd;
+                    v_best = v_gd;
+                }
+
+                // Reset damping to encourage Newton-like behavior
+                lambda = LAMBDA_SEED;
+                continue;
+            }
+
+            // If GD didn't help, escalate damping as before
             lambda *= 10.0;
-            if (lambda > 1e8)
-                break; // hopeless
+            if (lambda > LAMBDA_MAX)
+            {
+                result.status = ClosestPointResult::Status::Divergence;
+                break;
+            }
             continue;
         }
 
-        // Solve for Newton step
+        // Solve for LM step
         double du = (-Fu * d + Fv * b) / det;
         double dv = (-Fv * a + Fu * c) / det;
+
+        double stepNorm = std::sqrt(du * du + dv * dv);
+
+        // Stagnation detection
+        if (stepNorm < tol * 0.1 && lambda > LAMBDA_LARGE)
+        {
+            // 1. Try gradient descent fallback
+            double alpha = 0.1;
+            double du_gd = -alpha * Fu;
+            double dv_gd = -alpha * Fv;
+
+            double u_gd = u + du_gd;
+            double v_gd = v + dv_gd;
+            project_to_domain(u_gd, v_gd);
+
+            auto Sgd = evaluate(u_gd, v_gd);
+            std::array<double, 3> Fgd = {
+                Sgd[0] - point[0],
+                Sgd[1] - point[1],
+                Sgd[2] - point[2]};
+
+            double f_old = 0.5 * (F[0] * F[0] + F[1] * F[1] + F[2] * F[2]);
+            double f_gd = 0.5 * (Fgd[0] * Fgd[0] + Fgd[1] * Fgd[1] + Fgd[2] * Fgd[2]);
+
+            if (f_gd < f_old)
+            {
+                // Accept gradient descent step
+                u = u_gd;
+                v = v_gd;
+
+                // Update best-so-far as well
+                if (f_gd < f_best)
+                {
+                    f_best = f_gd;
+                    u_best = u_gd;
+                    v_best = v_gd;
+                }
+
+                // Reset lambda to encourage Newton-like behavior
+                lambda = LAMBDA_SEED;
+                continue;
+            }
+
+            // 2. If GD didn't help, declare stagnation
+            result.status = ClosestPointResult::Status::Stagnation;
+            break;
+        }
 
         // Tentative update
         double u_new = u + du;
         double v_new = v + dv;
 
-        // Clamp to domain
-        u_new = std::max(0.0, std::min(1.0, u_new));
-        v_new = std::max(0.0, std::min(1.0, v_new));
+        // Project to domain
+        project_to_domain(u_new, v_new);
 
         // Evaluate new residual
         auto Snew = evaluate(u_new, v_new);
-        std::array<double, 3> Fnew = {Snew[0] - point[0], Snew[1] - point[1], Snew[2] - point[2]};
+        std::array<double, 3> Fnew = {
+            Snew[0] - point[0],
+            Snew[1] - point[1],
+            Snew[2] - point[2]};
 
         double f_old = 0.5 * (F[0] * F[0] + F[1] * F[1] + F[2] * F[2]);
         double f_new = 0.5 * (Fnew[0] * Fnew[0] + Fnew[1] * Fnew[1] + Fnew[2] * Fnew[2]);
 
-        // Accept or reject step
+        if (f_new < f_best)
+        {
+            f_best = f_new;
+            u_best = u_new;
+            v_best = v_new;
+        }
+
+        // Accept or reject
         if (f_new < f_old)
         {
-            // Accept step
             u = u_new;
             v = v_new;
 
-            // Reduce damping (more Newton-like)
             lambda *= 0.5;
-            if (lambda < 1e-12)
-                lambda = 1e-12;
+            if (lambda < LAMBDA_MIN)
+                lambda = LAMBDA_MIN;
 
-            // Convergence check
-            if (std::sqrt(du * du + dv * dv) < tol)
+            if (stepNorm < tol)
+            {
+                bool finalOnBoundary =
+                    (u <= tol || u >= 1.0 - tol ||
+                     v <= tol || v >= 1.0 - tol);
+
+                result.status = finalOnBoundary
+                                    ? ClosestPointResult::Status::Boundary
+                                    : ClosestPointResult::Status::Success;
+
                 break;
+            }
         }
         else
         {
-            // Reject step → increase damping
             lambda *= 10.0;
-            if (lambda > 1e8)
+            if (lambda > LAMBDA_MAX)
+            {
+                result.status = ClosestPointResult::Status::Divergence;
                 break;
+            }
         }
     }
 
-    return {u, v};
+    // Fill final result
+    result.iterations = iter;
+    result.u = u_best;
+    result.v = v_best;
+
+    auto Sfinal = evaluate(u_best, v_best);
+    result.point3D = Sfinal;
+    double dx = Sfinal[0] - point[0];
+    double dy = Sfinal[1] - point[1];
+    double dz = Sfinal[2] - point[2];
+    result.distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+    result.onBoundary = (u_best <= tol || u_best >= 1.0 - tol ||
+                         v_best <= tol || v_best >= 1.0 - tol);
+
+    return result;
 }
 
 BSplineSurface::SurfaceDifferential BSplineSurface::differential(double u, double v) const
