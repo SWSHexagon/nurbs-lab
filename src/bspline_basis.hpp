@@ -24,7 +24,10 @@ public:
     // Number of basis functions == number of control points this basis expects
     int numBasis() const { return static_cast<int>(knots_.size()) - degree_ - 1; }
 
+    static void check_basis_consistency(const BSplineBasis &B, int numCtrl);
+
     void DumpInfo(const char *msg) const;
+    void GeneratePlot(const char *filename) const;
 
 private:
     int degree_;

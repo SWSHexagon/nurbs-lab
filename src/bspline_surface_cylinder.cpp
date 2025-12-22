@@ -1,4 +1,5 @@
 #include "bspline_surface_builder.hpp"
+#include <cmath>
 
 BSplineSurface SurfaceBuilder::Cylinder(double R, double height)
 {
@@ -9,7 +10,7 @@ BSplineSurface SurfaceBuilder::Cylinder(double R, double height)
                                                          std::vector<std::array<double, 3>>(2));
 
     double a = R;
-    double b = R * 0.7071067811865476;
+    double b = R * std::sqrt(2) / 2;
 
     // Bottom ring
     ctrl[0][0] = {a, 0, 0};

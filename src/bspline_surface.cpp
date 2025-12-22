@@ -203,7 +203,7 @@ inline void BSplineSurface::project_to_domain(double &u, double &v)
     //   - interior no-op
 }
 
-BSplineSurface::ClosestPointResult BSplineSurface::closest_point_LM(
+ClosestPointResult BSplineSurface::closest_point_LM(
     const std::array<double, 3> &point,
     double u0,
     double v0,
@@ -461,7 +461,7 @@ BSplineSurface::ClosestPointResult BSplineSurface::closest_point_LM(
     return result;
 }
 
-BSplineSurface::SurfaceDifferential BSplineSurface::differential(double u, double v) const
+SurfaceDifferential BSplineSurface::differential(double u, double v) const
 {
     SurfaceDifferential d;
 
@@ -488,9 +488,9 @@ BSplineSurface::SurfaceDifferential BSplineSurface::differential(double u, doubl
     return d;
 }
 
-BSplineSurface::Curvature BSplineSurface::curvature(double u, double v) const
+SurfaceCurvature BSplineSurface::curvature(double u, double v) const
 {
-    Curvature c{0, 0, 0, 0, false};
+    SurfaceCurvature c{0, 0, 0, 0, false};
 
     auto d = differential(u, v);
 
@@ -584,6 +584,46 @@ std::array<double, 3> BSplineSurface::combine_uv_to_3d(
     r[2] /= len;
 
     return (r);
+}
+
+SurfaceFrame BSplineSurface::frame(double u, double v) const
+{
+    SurfaceFrame fr;
+
+    // Position
+    fr.P = evaluate(u, v);
+
+    // Differential geometry
+    auto d = differential(u, v);
+
+    fr.Su = d.Su;
+    fr.Sv = d.Sv;
+    fr.N = d.N;
+
+    fr.E = d.E;
+    fr.F = d.F;
+    fr.G = d.G;
+
+    fr.e = d.e;
+    fr.f = d.f;
+    fr.g = d.g;
+
+    fr.metricDet = d.metricDet;
+    fr.metricDegenerate = d.metricDegenerate;
+
+    // Curvature
+    auto c = curvature(u, v);
+    fr.k1 = c.k1;
+    fr.k2 = c.k2;
+    fr.valid = c.valid;
+
+    fr.dir1 = c.dir1;
+    fr.dir2 = c.dir2;
+
+    fr.uv1 = c.uv1;
+    fr.uv2 = c.uv2;
+
+    return (fr);
 }
 
 void BSplineSurface::DumpInfo() const

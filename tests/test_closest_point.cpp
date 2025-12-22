@@ -55,21 +55,21 @@ void test_closest_point(BSplineSurface &surf)
         double u_est = result.u;
         double v_est = result.v;
         stats.iterations += result.iterations;
-        if (result.status == BSplineSurface::ClosestPointResult::Status::Boundary)
+        if (result.status == ClosestPointResult::Status::Boundary)
         {
             stats.edgeCases++;
         }
-        else if (result.status != BSplineSurface::ClosestPointResult::Status::Success)
+        else if (result.status != ClosestPointResult::Status::Success)
         {
-            if (result.status == BSplineSurface::ClosestPointResult::Status::MaxIterations)
+            if (result.status == ClosestPointResult::Status::MaxIterations)
             {
                 stats.maxiterations++;
             }
-            else if (result.status == BSplineSurface::ClosestPointResult::Status::Stagnation)
+            else if (result.status == ClosestPointResult::Status::Stagnation)
             {
                 stats.stagnations++;
             }
-            else if (result.status == BSplineSurface::ClosestPointResult::Status::Divergence)
+            else if (result.status == ClosestPointResult::Status::Divergence)
             {
                 stats.divergences++;
             }

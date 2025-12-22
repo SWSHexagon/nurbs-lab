@@ -2,6 +2,8 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <fstream>
+#include <iomanip>
 
 BSplineBasis::BSplineBasis(int degree, std::vector<double> knots)
     : degree_(degree), knots_(std::move(knots))
@@ -110,6 +112,71 @@ double BSplineBasis::second_derivative(int i, int p, double u) const
     return term1 - term2;
 }
 
+void BSplineBasis::check_basis_consistency(const BSplineBasis &B, int numCtrl)
+{
+    const int p = B.degree();
+    const auto &U = B.knots();
+    const int m = static_cast<int>(U.size()) - 1; // last knot index
+    const int nBasis = B.numBasis();              // expected basis count
+    const int expectedBasis = static_cast<int>(U.size()) - p - 1;
+
+    std::cout << "\n=== B-Spline Basis Consistency Check ===\n";
+
+    // 1. Degree sanity
+    if (p < 0)
+        std::cout << "ERROR: degree < 0\n";
+
+    // 2. Knot vector length sanity
+    if (U.size() < static_cast<size_t>(p + 2))
+        std::cout << "ERROR: knot vector too short for degree\n";
+
+    // 3. Basis count sanity
+    std::cout << "Basis functions: " << nBasis
+              << " (expected " << expectedBasis << ")\n";
+
+    if (nBasis != expectedBasis)
+        std::cout << "ERROR: numBasis() mismatch\n";
+
+    // 4. Control point count consistency
+    if (numCtrl != nBasis)
+        std::cout << "ERROR: control point count (" << numCtrl
+                  << ") does not match basis count (" << nBasis << ")\n";
+
+    // 5. Parameter domain
+    double umin = U[p];
+    double umax = U[m - p];
+    std::cout << "Parameter domain: [" << umin << ", " << umax << "]\n";
+
+    // 6. Endpoint behavior
+    std::cout << "\nEndpoint basis values:\n";
+    std::cout << "At u = " << umin << ":\n";
+    for (int i = 0; i < nBasis; ++i)
+        std::cout << "  N" << i << " = " << B.evaluate(i, umin) << "\n";
+
+    std::cout << "At u = " << umax << ":\n";
+    for (int i = 0; i < nBasis; ++i)
+        std::cout << "  N" << i << " = " << B.evaluate(i, umax) << "\n";
+
+    // 7. Partition of unity test
+    std::cout << "\nPartition of unity test:\n";
+    for (double u = umin; u <= umax; u += (umax - umin) / 10.0)
+    {
+        double sum = 0.0;
+        for (int i = 0; i < nBasis; ++i)
+            sum += B.evaluate(i, u);
+
+        std::cout << "  u=" << std::setw(5) << u
+                  << "  sum(Ni)=" << sum;
+
+        if (std::abs(sum - 1.0) > 1e-6)
+            std::cout << "  <-- ERROR";
+
+        std::cout << "\n";
+    }
+
+    std::cout << "=== End Consistency Check ===\n\n";
+}
+
 void BSplineBasis::DumpInfo(const char *msg) const
 {
     const int nBasis = numBasis();
@@ -122,4 +189,34 @@ void BSplineBasis::DumpInfo(const char *msg) const
     for (double k : knots_)
         std::cout << k << " ";
     std::cout << "\n";
+}
+
+void BSplineBasis::GeneratePlot(const char *filename) const
+{
+    std::ofstream outFile(filename);
+
+    if (!outFile)
+    {
+        std::cerr << "Failed to open basis plot file:" << filename << std::endl;
+        return;
+    }
+
+    for (int i = 0; i <= 100; i++)
+    {
+        double u = 0.01 * double(i);
+
+        if (u > 1.0)
+            u = 1.0;
+
+        outFile << u;
+
+        for (int i = 0; i < numBasis(); ++i)
+            outFile << "," << evaluate(i, u);
+
+        outFile << std::endl;
+    }
+
+    outFile.close();
+
+    std::cout << "Wrote basis plot file: " << filename << std::endl;
 }
