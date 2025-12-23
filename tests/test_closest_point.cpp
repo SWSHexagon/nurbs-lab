@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include "bspline_surface_builder.hpp"
+#include <chrono>
 
 struct Stats
 {
@@ -31,10 +32,19 @@ void test_closest_point(BSplineSurface &surf)
     std::normal_distribution<double> noise(0.0, 0.05); // 5cm noise, adjust as needed
 
     const int N = 100000; // number of random tests
+    auto start = std::chrono::steady_clock::now();
 
     for (int k = 0; k < N; ++k)
     {
         stats.total++;
+
+        if (stats.total % 1000 == 0)
+        {
+            auto end = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration<double>(end - start).count();
+            std::cout << std::fixed << std::setprecision(3);
+            std::cout << "Test " << stats.total << " of " << N << " (" << elapsed << "seconds)" << std::endl;
+        }
 
         // 1. Pick a random true parameter
         double u_true = uni(rng);

@@ -24,6 +24,9 @@ add_library(nurbs
     src/bspline_surface_cylinder.cpp
     src/bspline_surface_plane.cpp
     src/bspline_surface_bowl.cpp
+    src/bspline_curve_builder.hpp
+    src/bspline_curve_sample.cpp
+    src/bspline_curve_stress.cpp
 )
 
 target_include_directories(nurbs PUBLIC src)

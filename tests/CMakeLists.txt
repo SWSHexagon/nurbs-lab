@@ -17,3 +17,7 @@ add_test(NAME test_closest_point COMMAND test_closest_point)
 add_executable(test_sphere_curvature test_sphere_curvature.cpp)
 target_link_libraries(test_sphere_curvature PRIVATE nurbs)
 add_test(NAME test_sphere_curvature COMMAND test_sphere_curvature)
+
+add_executable(test_closest_point_curve test_closest_point_curve.cpp)
+target_link_libraries(test_closest_point_curve PRIVATE nurbs)
+add_test(NAME test_closest_point_curve COMMAND test_closest_point_curve)

@@ -72,10 +72,10 @@ private:
     BSplineBasis v_basis_;
     std::vector<std::vector<std::array<double, 3>>> ctrl_;
 
-    BSplineCurve boundary_u_min_{BSplineBasis(0, {0}), {}};
-    BSplineCurve boundary_u_max_{BSplineBasis(0, {0}), {}};
-    BSplineCurve boundary_v_min_{BSplineBasis(0, {0}), {}};
-    BSplineCurve boundary_v_max_{BSplineBasis(0, {0}), {}};
+    BSplineCurve boundary_u_min_{BSplineBasis(0, {0, 0}), {}};
+    BSplineCurve boundary_u_max_{BSplineBasis(0, {0, 0}), {}};
+    BSplineCurve boundary_v_min_{BSplineBasis(0, {0, 0}), {}};
+    BSplineCurve boundary_v_max_{BSplineBasis(0, {0, 0}), {}};
 
     void build_boundary_curves();
 
