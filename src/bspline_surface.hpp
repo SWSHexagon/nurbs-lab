@@ -47,11 +47,11 @@ private:
     BSplineBasis v_basis_;
     std::vector<std::vector<std::array<double, 3>>> ctrl_;
 
-    static const double LAMBDA_MIN;
-    static const double LAMBDA_LARGE;
-    static const double LAMBDA_MAX;
-    static const double LAMBDA_SEED;
-    static const double NEAR_ZERO;
+    static constexpr double LAMBDA_MIN = 1e-12;
+    static constexpr double LAMBDA_LARGE = 1e6;
+    static constexpr double LAMBDA_MAX = 1e8;
+    static constexpr double LAMBDA_SEED = 1e-3;
+    static constexpr double NEAR_ZERO = 1e-12;
 
     static void project_to_domain(double &u, double &v);
 

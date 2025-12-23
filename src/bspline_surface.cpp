@@ -3,12 +3,6 @@
 
 using namespace MathUtils;
 
-const double BSplineSurface::LAMBDA_MIN{1e-12};
-const double BSplineSurface::LAMBDA_LARGE{1e6};
-const double BSplineSurface::LAMBDA_MAX{1e8};
-const double BSplineSurface::LAMBDA_SEED{1e-3};
-const double BSplineSurface::NEAR_ZERO{1e-12};
-
 BSplineSurface::BSplineSurface(
     BSplineBasis u_basis,
     BSplineBasis v_basis,
