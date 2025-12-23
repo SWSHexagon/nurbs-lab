@@ -155,98 +155,231 @@ std::array<double, 3> BSplineCurve::normal(double t) const
     return normalize(N);
 }
 
-BSplineCurve::ClosestPointResult BSplineCurve::closest_point_LM(
+ClosestPointResult BSplineCurve::closest_point_LM(
     const std::array<double, 3> &P,
     double t0,
     int maxIters,
     double tol) const
 {
-    ClosestPointResult result;
-    result.t = t0;
+    ClosestPointResult result{};
 
+    // Current parameter
+    double t = t0;
+    project_to_domain(t);
+
+    // Evaluate at initial guess
+    auto C0 = evaluate(t);
+    auto r0 = sub(C0, P);
+    double f_best = 0.5 * dot(r0, r0);
+
+    double t_best = t;
+    std::array<double, 3> C_best = C0;
+
+    // Seed lambda
     double lambda = LAMBDA_SEED;
 
-    for (int iter = 0; iter < maxIters; ++iter)
+    int iter = 0;
+
+    for (iter = 0; iter < maxIters; ++iter)
     {
-        project_to_domain(result.t);
+        project_to_domain(t);
 
-        auto C = evaluate(result.t);
-        auto Cp = derivative(result.t);
-        auto Cpp = second_derivative(result.t);
+        // Curve and derivatives at current t
+        auto C = evaluate(t);
+        auto Cp = derivative(t);
+        auto Cpp = second_derivative(t);
 
-        auto r = sub(C, P);         // residual
-        double f = 0.5 * dot(r, r); // objective
+        // Residual and objective
+        auto r = sub(C, P);
+        double f = 0.5 * dot(r, r);
 
-        double g = dot(r, Cp);                // d/dt(0.5|r|^2) = r·C'
-        double H = dot(Cp, Cp) + dot(r, Cpp); // scalar Hessian
+        // Gradient g = d/dt(0.5 * |r|^2) = r · C'
+        double g = dot(r, Cp);
 
-        result.gradNorm = std::abs(g);
+        // Hessian H = d^2/dt^2(0.5 * |r|^2) = |C'|^2 + r · C''
+        double H = dot(Cp, Cp) + dot(r, Cpp);
 
-        // Convergence check
-        if (result.gradNorm < tol)
+        double gradNorm = std::abs(g);
+        result.gradNorm = gradNorm;
+
+        // Update best-so-far
+        if (f < f_best)
         {
-            result.point3D = C;
-            result.distance = std::sqrt(2.0 * f);
-            result.iterations = iter;
-            result.status = ClosestPointResult::Status::Success;
-            result.onBoundary = (result.t <= 0.0 + 1e-10 || result.t >= 1.0 - 1e-10);
-            return result;
+            f_best = f;
+            t_best = t;
+            C_best = C;
         }
 
-        // Damped scalar step: (H + lambda) * delta = -g
-        double denom = H + lambda;
-        if (std::abs(denom) < NEAR_ZERO)
+        // Convergence by gradient norm
+        if (gradNorm < tol)
         {
-            // Hessian unusable: treat as divergence
-            result.status = ClosestPointResult::Status::Divergence;
+            bool finalOnBoundary =
+                (t <= tol || t >= 1.0 - tol);
+
+            result.status = finalOnBoundary
+                                ? ClosestPointResult::Status::Boundary
+                                : ClosestPointResult::Status::Success;
             break;
         }
 
-        double delta = -g / denom;
+        // Damped scalar Hessian: H + lambda
+        double denom = H + lambda;
 
-        if (std::abs(delta) < tol * 1e-2)
+        // Hessian degeneracy / near-singularity
+        if (std::abs(denom) < NEAR_ZERO)
         {
-            // Stagnation
+            // Gradient descent fallback
+            double alpha = 0.1; // small step
+            double delta_gd = -alpha * g;
+            double t_gd = t + delta_gd;
+            project_to_domain(t_gd);
+
+            auto C_gd = evaluate(t_gd);
+            auto r_gd = sub(C_gd, P);
+            double f_gd = 0.5 * dot(r_gd, r_gd);
+
+            if (f_gd < f)
+            {
+                // Accept GD step
+                t = t_gd;
+
+                // Update best-so-far
+                if (f_gd < f_best)
+                {
+                    f_best = f_gd;
+                    t_best = t_gd;
+                    C_best = C_gd;
+                }
+
+                // Reset damping to encourage Newton-like behavior
+                lambda = LAMBDA_SEED;
+                continue;
+            }
+
+            // If GD didn't help, escalate damping
+            lambda *= 10.0;
+            if (lambda > LAMBDA_MAX)
+            {
+                result.status = ClosestPointResult::Status::Divergence;
+                break;
+            }
+
+            continue;
+        }
+
+        // LM step: (H + lambda) * delta = -g
+        double delta = -g / denom;
+        double stepNorm = std::abs(delta);
+
+        // Stagnation detection (tiny step + large damping)
+        if (stepNorm < tol * 0.1 && lambda > LAMBDA_LARGE)
+        {
+            // Gradient descent fallback
+            double alpha = 0.1;
+            double delta_gd = -alpha * g;
+            double t_gd = t + delta_gd;
+            project_to_domain(t_gd);
+
+            auto C_gd = evaluate(t_gd);
+            auto r_gd = sub(C_gd, P);
+            double f_gd = 0.5 * dot(r_gd, r_gd);
+
+            if (f_gd < f)
+            {
+                // Accept GD step
+                t = t_gd;
+
+                // Update best-so-far
+                if (f_gd < f_best)
+                {
+                    f_best = f_gd;
+                    t_best = t_gd;
+                    C_best = C_gd;
+                }
+
+                // Reset lambda to encourage Newton-like behavior
+                lambda = LAMBDA_SEED;
+                continue;
+            }
+
+            // GD didn't help -> declare stagnation
             result.status = ClosestPointResult::Status::Stagnation;
             break;
         }
 
-        double t_new = result.t + delta;
+        // Tentative LM update
+        double t_new = t + delta;
         project_to_domain(t_new);
 
         auto C_new = evaluate(t_new);
         auto r_new = sub(C_new, P);
-        double fNew = 0.5 * dot(r_new, r_new);
+        double f_new = 0.5 * dot(r_new, r_new);
 
-        // Check improvement
-        if (fNew < f)
+        // Update best-so-far
+        if (f_new < f_best)
         {
-            // Accept step, decrease lambda
-            result.t = t_new;
-            lambda /= 10;
-            lambda = std::max(lambda, LAMBDA_MIN);
+            f_best = f_new;
+            t_best = t_new;
+            C_best = C_new;
+        }
+
+        // Accept or reject step
+        if (f_new < f)
+        {
+            // Accept
+            t = t_new;
+
+            lambda *= 0.5;
+            if (lambda < LAMBDA_MIN)
+                lambda = LAMBDA_MIN;
+
+            // Additional convergence check on step size
+            if (stepNorm < tol)
+            {
+                bool finalOnBoundary =
+                    (t <= tol || t >= 1.0 - tol);
+
+                result.status = finalOnBoundary
+                                    ? ClosestPointResult::Status::Boundary
+                                    : ClosestPointResult::Status::Success;
+                break;
+            }
         }
         else
         {
-            // Reject step, increase lambda
-            lambda *= 10;
-            lambda = std::min(lambda, LAMBDA_MAX);
+            // Reject step, increase damping
+            lambda *= 10.0;
+            if (lambda > LAMBDA_MAX)
+            {
+                result.status = ClosestPointResult::Status::Divergence;
+                break;
+            }
         }
-
-        result.iterations = iter;
     }
 
-    // Final evaluation
-    project_to_domain(result.t);
-    auto C = evaluate(result.t);
-    auto r = sub(C, P);
+    // Fill final result based on best-so-far
+    result.iterations = iter;
 
-    result.point3D = C;
-    result.distance = norm(r);
-    result.onBoundary = (result.t <= 0.0 + 1e-10 || result.t >= 1.0 - 1e-10);
+    project_to_domain(t_best);
+    auto C_final = evaluate(t_best);
+    auto r_final = sub(C_final, P);
+    double dist = norm(r_final);
 
-    if (result.status == ClosestPointResult::Status::MaxIterations)
+    result.t() = t_best;
+    result.point3D = C_final;
+    result.distance = dist;
+    result.bestObjective = f_best;
+
+    result.onBoundary = (t_best <= tol || t_best >= 1.0 - tol);
+
+    // If no status was set inside the loop, it means we exited by maxIters
+    if (result.status != ClosestPointResult::Status::Success &&
+        result.status != ClosestPointResult::Status::Boundary &&
+        result.status != ClosestPointResult::Status::Stagnation &&
+        result.status != ClosestPointResult::Status::Divergence)
+    {
         result.status = ClosestPointResult::Status::MaxIterations;
+    }
 
     return result;
 }

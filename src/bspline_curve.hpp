@@ -1,5 +1,6 @@
 #pragma once
 #include "bspline_basis.hpp"
+#include "closest_point_result.hpp"
 #include <array>
 #include <vector>
 
@@ -20,32 +21,11 @@ public:
     std::array<double, 3> normal(double t) const; // principal normal (Frenet)
     double curvature(double t) const;
 
-    struct ClosestPointResult
-    {
-        double t = 0.0;                  // parameter of closest point
-        std::array<double, 3> point3D{}; // C(t)
-        double distance = 0.0;           // |C(t) - P|
-        double gradNorm = 0.0;           // |d/dt(0.5|C(t)-P|^2)| = |(C(t)-P)·C'(t)|
-
-        int iterations = 0;
-
-        enum class Status
-        {
-            Success,
-            Boundary,
-            Stagnation,
-            Divergence,
-            MaxIterations
-        } status = Status::MaxIterations;
-
-        bool onBoundary = false;
-    };
-
     ClosestPointResult closest_point_LM(
         const std::array<double, 3> &point,
         double t0,
         int maxIters = 20,
-        double tol = 1e-6) const;
+        double tol = 1e-8) const;
 
     void DumpInfo() const;
 

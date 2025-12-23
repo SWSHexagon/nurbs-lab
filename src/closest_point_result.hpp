@@ -23,5 +23,9 @@ struct ClosestPointResult
         MaxIterations // Loop exhaused without convergence
     } status = Status::MaxIterations;
 
-    bool onBoundary = false; // Whether the final point is on the boundary
+    bool onBoundary = false;    // Whether the final point is on the boundary
+    double bestObjective = 1e8; // best value of 0.5||F||² found
+
+    double t() const { return u; }
+    double &t() { return u; }
 };

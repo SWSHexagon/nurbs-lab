@@ -1,7 +1,7 @@
 #include <random>
 #include <iostream>
 #include <iomanip>
-#include "bspline_surface.hpp"
+#include "bspline_surface_builder.hpp"
 
 struct Stats
 {
@@ -12,10 +12,13 @@ struct Stats
     int divergences = 0;
     int maxiterations = 0;
     int iterations = 0;
+    int numValid = 0;
     double maxDistError = 0.0;
     double sumDistError = 0.0;
     double maxParamError = 0.0;
     double sumParamError = 0.0;
+    double maxObjective = 0.0;
+    double sumObjective = 0.0;
 };
 
 void test_closest_point(BSplineSurface &surf)
@@ -51,7 +54,7 @@ void test_closest_point(BSplineSurface &surf)
         double v0 = uni(rng);
 
         // 5. Run LM closest-point
-        auto result = surf.closest_point_LM(Q, u0, v0, 100, 1e-8);
+        auto result = surf.closest_point_global(Q, 4, 0.5, 0.5, 100, 1e-8, 100, 1e-8);
         double u_est = result.u;
         double v_est = result.v;
         stats.iterations += result.iterations;
@@ -68,10 +71,19 @@ void test_closest_point(BSplineSurface &surf)
             else if (result.status == ClosestPointResult::Status::Stagnation)
             {
                 stats.stagnations++;
+                stats.maxObjective = std::max(stats.maxObjective, result.bestObjective);
+                stats.sumObjective += result.bestObjective;
+                stats.numValid++;
             }
             else if (result.status == ClosestPointResult::Status::Divergence)
             {
                 stats.divergences++;
+            }
+            else
+            {
+                stats.maxObjective = std::max(stats.maxObjective, result.bestObjective);
+                stats.sumObjective += result.bestObjective;
+                stats.numValid++;
             }
         }
 
@@ -119,10 +131,18 @@ void test_closest_point(BSplineSurface &surf)
     std::cout << "Max dist error  : " << stats.maxDistError << "\n";
     std::cout << "Mean param error: " << stats.sumParamError / stats.total << "\n";
     std::cout << "Max param error : " << stats.maxParamError << "\n";
+
+    if (stats.numValid > 0)
+    {
+        std::cout << "Mean objective  : " << stats.sumObjective / stats.numValid << "\n";
+        std::cout << "Max objective   : " << stats.maxObjective << "\n";
+    }
 }
 
 int main()
 {
     std::cout << "=== Testing closest point ===\n";
+    auto surf = SurfaceBuilder::Bowl();
+    test_closest_point(surf);
     return (0);
 }
