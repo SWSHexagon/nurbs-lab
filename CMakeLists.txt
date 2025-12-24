@@ -9,7 +9,7 @@ if(WIN32 AND DEFINED WINVER_VALUE)
 endif()
 
 # vcpkg makes these packages available automatically
-find_package(Boost REQUIRED COMPONENTS thread asio)
+find_package(Boost REQUIRED COMPONENTS thread)
 
 option(BUILD_TESTS "Build unit tests" ON)
 
@@ -38,6 +38,8 @@ add_library(nurbs
 )
 
 target_include_directories(nurbs PUBLIC src)
+
+target_link_libraries(nurbs PRIVATE Boost::thread)
 
 add_executable(nurbs_demo src/main.cpp)
 target_link_libraries(nurbs_demo PRIVATE nurbs)

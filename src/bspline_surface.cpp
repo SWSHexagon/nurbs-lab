@@ -12,6 +12,15 @@ BSplineSurface::BSplineSurface(
       ctrl_(std::move(control_points))
 {
     // Initialize surface extents
+    initialize_domain();
+
+    // Build the boundary curves
+    build_boundary_curves();
+}
+
+void BSplineSurface::initialize_domain()
+{
+    // Initialize surface extents
     auto [uMin, uMax] = u_basis_.getExtents();
     auto [vMin, vMax] = v_basis_.getExtents();
 
@@ -19,9 +28,6 @@ BSplineSurface::BSplineSurface(
     u_max = uMax;
     v_min = vMin;
     v_max = vMax;
-
-    // Build the boundary curves
-    build_boundary_curves();
 }
 
 std::array<double, 3> BSplineSurface::evaluate(double u, double v) const

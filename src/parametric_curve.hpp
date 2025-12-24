@@ -1,8 +1,8 @@
 #pragma once
 
+#include "closest_point_result.hpp"
 #include <array>
 #include <utility>
-#include "closest_point_result.hpp"
 
 class ParametricCurve
 {
@@ -25,5 +25,27 @@ public:
         const std::array<double, 3> &point,
         double t0,
         int maxIters = 20,
-        double tol = 1e-8) const = 0;
+        double tol = 1e-8) const;
+
+    virtual void DumpInfo() const = 0;
+
+protected:
+    static constexpr double LAMBDA_MIN = 1e-12;
+    static constexpr double LAMBDA_LARGE = 1e6;
+    static constexpr double LAMBDA_MAX = 1e8;
+    static constexpr double LAMBDA_SEED = 1e-3;
+    static constexpr double NEAR_ZERO = 1e-12;
+
+    double t_min = 0;
+    double t_max = 1;
+
+    void project_to_domain(double &t) const;
+    virtual void initialize_domain() = 0;
+
+    static double dot(const std::array<double, 3> &a, const std::array<double, 3> &b);
+    static std::array<double, 3> sub(const std::array<double, 3> &a, const std::array<double, 3> &b);
+    static std::array<double, 3> add(const std::array<double, 3> &a, const std::array<double, 3> &b);
+    static std::array<double, 3> scale(const std::array<double, 3> &a, double s);
+    static double norm(const std::array<double, 3> &a);
+    static std::array<double, 3> normalize(const std::array<double, 3> &a);
 };

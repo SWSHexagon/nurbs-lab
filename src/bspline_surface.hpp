@@ -41,6 +41,9 @@ public:
 
     void DumpInfo() const;
 
+protected:
+    virtual void initialize_domain();
+
 private:
     BSplineBasis u_basis_;
     BSplineBasis v_basis_;

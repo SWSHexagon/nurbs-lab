@@ -68,4 +68,5 @@ protected:
     double v_max = 1;
 
     void project_to_domain(double &u, double &v) const;
+    virtual void initialize_domain() = 0;
 };
