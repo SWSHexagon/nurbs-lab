@@ -21,6 +21,7 @@ add_library(nurbs
     src/bspline_basis.cpp src/bspline_basis.hpp
     src/bspline_curve.cpp src/bspline_curve.hpp
     src/bspline_surface.cpp src/bspline_surface.hpp
+    src/nurbs_curve.cpp src/nurbs_curve.hpp
     src/nurbs_surface.cpp src/nurbs_surface.hpp
     src/math_utils.cpp src/math_utils.hpp
     src/bspline_surface_builder.hpp
@@ -31,10 +32,10 @@ add_library(nurbs
     src/bspline_curve_builder.hpp
     src/bspline_curve_sample.cpp
     src/bspline_curve_stress.cpp
-    src/parametric_curve.hpp
-    src/parametric_surface.hpp
-    src/parametric_surface.cpp
-    src/parametric_curve.cpp
+    src/parametric_curve.cpp src/parametric_curve.hpp
+    src/parametric_surface.cpp src/parametric_surface.hpp
+    src/line_curve.hpp
+    src/circle_curve.cpp src/circle_curve.hpp
 )
 
 target_include_directories(nurbs PUBLIC src)

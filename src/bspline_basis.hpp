@@ -32,6 +32,8 @@ public:
     void DumpInfo(const char *msg) const;
     void GeneratePlot(const char *filename) const;
 
+    static constexpr double DOMAIN_PADDING_FACTOR = 1e-6;
+
 private:
     int degree_;
     std::vector<double> knots_;

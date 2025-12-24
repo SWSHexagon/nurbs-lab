@@ -115,18 +115,29 @@ double BSplineBasis::second_derivative(int i, int p, double u) const
 
 std::pair<double, double> BSplineBasis::getExtents() const
 {
+    if (degree_ < 1)
+        throw std::runtime_error("BSplineBasis: Degree must be >= 1 for geometric curves");
+
     if (knots_.size() < 2 * degree_ + 2)
-        throw std::runtime_error("Invalid knot vector");
+        throw std::runtime_error("BSplineBasis: Invalid knot vector");
 
     int iMin = degree_;
     int iMax = static_cast<int>(knots_.size()) - degree_ - 1;
 
-    if ((iMin >= 0) && (iMax >= iMin))
-    {
-        return std::pair<double, double>(knots_[iMin], knots_[iMax]);
-    }
+    if (iMax <= iMin)
+        throw std::runtime_error("BSplineBasis: degenerate knot span");
 
-    return std::pair<double, double>();
+    double tMin = knots_[iMin];
+    double tMax = knots_[iMax];
+
+    double padding = (tMax - tMin) * DOMAIN_PADDING_FACTOR;
+    tMin += padding;
+    tMax -= padding;
+
+    if (tMin < tMax)
+        return {tMin, tMax};
+
+    throw std::runtime_error("BSplineBasis: invalid domain after padding");
 }
 
 void BSplineBasis::check_basis_consistency(const BSplineBasis &B, int numCtrl)

@@ -3,6 +3,8 @@
 #include <iomanip>
 #include <chrono>
 #include "bspline_curve_builder.hpp"
+#include "line_curve.hpp"
+#include "circle_curve.hpp"
 
 struct CurveStats
 {
@@ -141,7 +143,9 @@ void test_closest_point_curve(ParametricCurve &curve)
 int main()
 {
     std::cout << "=== Testing curve closest point ===\n";
-    auto curve = CurveBuilder::Stress(); // or any analytic test curve
+    // auto curve = CurveBuilder::Stress(); // or any analytic test curve
+    // LineCurve curve({0.0, 0.0, 0.0}, {1.0, 1.0, 1.0});
+    CircleCurve curve({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
     test_closest_point_curve(curve);
     return 0;
 }

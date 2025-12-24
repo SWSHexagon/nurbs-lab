@@ -13,7 +13,7 @@ BSplineCurve::BSplineCurve(
 void BSplineCurve::initialize_domain()
 {
     // Initialize curve domain
-    auto [tMin, tMax] = basis_.getExtents();
+    auto [tMin, tMax] = basis_.getExtents(); // Throws exception on invalid basis
 
     t_min = tMin;
     t_max = tMax;
