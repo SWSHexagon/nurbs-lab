@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <exception>
 
 BSplineBasis::BSplineBasis(int degree, std::vector<double> knots)
     : degree_(degree), knots_(std::move(knots))
@@ -110,6 +111,22 @@ double BSplineBasis::second_derivative(int i, int p, double u) const
         term2 = (p / denom2) * derivative(i + 1, p - 1, u);
 
     return term1 - term2;
+}
+
+std::pair<double, double> BSplineBasis::getExtents() const
+{
+    if (knots_.size() < 2 * degree_ + 2)
+        throw std::runtime_error("Invalid knot vector");
+
+    int iMin = degree_;
+    int iMax = static_cast<int>(knots_.size()) - degree_ - 1;
+
+    if ((iMin >= 0) && (iMax >= iMin))
+    {
+        return std::pair<double, double>(knots_[iMin], knots_[iMax]);
+    }
+
+    return std::pair<double, double>();
 }
 
 void BSplineBasis::check_basis_consistency(const BSplineBasis &B, int numCtrl)

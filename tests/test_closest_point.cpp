@@ -22,7 +22,7 @@ struct Stats
     double sumObjective = 0.0;
 };
 
-void test_closest_point(BSplineSurface &surf)
+void test_closest_point(ParametricSurface &surf)
 {
     Stats stats;
 

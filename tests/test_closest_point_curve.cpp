@@ -25,7 +25,7 @@ struct CurveStats
     double sumObjective = 0.0;
 };
 
-void test_closest_point_curve(BSplineCurve &curve)
+void test_closest_point_curve(ParametricCurve &curve)
 {
     CurveStats stats;
 

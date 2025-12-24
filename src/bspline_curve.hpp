@@ -1,10 +1,12 @@
 #pragma once
+
+#include "parametric_curve.hpp"
 #include "bspline_basis.hpp"
 #include "closest_point_result.hpp"
 #include <array>
 #include <vector>
 
-class BSplineCurve
+class BSplineCurve : public ParametricCurve
 {
 public:
     BSplineCurve(
@@ -12,16 +14,20 @@ public:
         std::vector<std::array<double, 3>> control_points);
 
     // Basic geometry
-    std::array<double, 3> evaluate(double t) const;
-    std::array<double, 3> derivative(double t) const;
-    std::array<double, 3> second_derivative(double t) const;
+    virtual std::array<double, 3> evaluate(double t) const;
+    virtual std::array<double, 3> derivative(double t) const;
+    virtual std::array<double, 3> second_derivative(double t) const;
 
     // Convenience
-    std::array<double, 3> tangent(double t, bool unitize = true) const;
-    std::array<double, 3> normal(double t) const; // principal normal (Frenet)
+    virtual std::array<double, 3> tangent(double t, bool unitize = true) const;
+    virtual std::array<double, 3> normal(double t) const; // principal normal (Frenet)
+
+    // Domain of valid parameters
+    virtual std::pair<double, double> domain() const { return {0.0, 1.0}; } // Default is [0, 1]
+
     double curvature(double t) const;
 
-    ClosestPointResult closest_point_LM(
+    virtual ClosestPointResult closest_point_LM(
         const std::array<double, 3> &point,
         double t0,
         int maxIters = 20,

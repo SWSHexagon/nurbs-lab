@@ -13,7 +13,8 @@
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": "c:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake",
                 "VCPKG_TARGET_TRIPLET": "x64-windows",
-                "CMAKE_CXX_STANDARD": "20"
+                "CMAKE_CXX_STANDARD": "20",
+                "WINVER_VALUE": "0x0601"
             }
         }
     ],

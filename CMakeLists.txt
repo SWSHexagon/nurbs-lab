@@ -4,6 +4,10 @@ project(nurbs_lab LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(WIN32 AND DEFINED WINVER_VALUE)
+    add_compile_definitions(_WIN32_WINNT=${WINVER_VALUE})
+endif()
+
 # vcpkg makes these packages available automatically
 find_package(Boost REQUIRED COMPONENTS thread asio)
 
@@ -27,6 +31,10 @@ add_library(nurbs
     src/bspline_curve_builder.hpp
     src/bspline_curve_sample.cpp
     src/bspline_curve_stress.cpp
+    src/parametric_curve.hpp
+    src/parametric_surface.hpp
+    src/parametric_surface.cpp
+    src/parametric_curve.cpp
 )
 
 target_include_directories(nurbs PUBLIC src)
