@@ -3,6 +3,7 @@
 #include <numbers>
 #include <cmath>
 #include <array>
+#include <iostream>
 
 using namespace MathUtils;
 
@@ -23,22 +24,23 @@ NURBSCurve NURBSCurveBuilder::MakeNURBSCircle(
     auto v = cross(n, u);
 
     // 8 control points (no duplication)
-    std::vector<std::array<double, 3>> ctrl(8);
-    std::vector<double> w(8);
+    std::vector<std::array<double, 3>> ctrl = {
+        {1, 0, 0},
+        {1, 1, 0},
+        {0, 1, 0},
+        {-1, 1, 0},
+        {-1, 0, 0},
+        {-1, -1, 0},
+        {0, -1, 0},
+        {1, -1, 0},
+        {1, 0, 0}};
 
-    const double w_diag = std::sqrt(0.5);
-    const double dtheta = pi / 4.0;
+    std::vector<double> w(9);
+    const double w_diag = std::sqrt(2) / 2;
 
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < 9; ++i)
     {
-        double theta = i * dtheta;
-        double c = std::cos(theta);
-        double s = std::sin(theta);
-
-        ctrl[i] = add(center,
-                      add(scale(u, radius * c),
-                          scale(v, radius * s)));
-
+        ctrl[i] = add(center, scale(ctrl[i], radius));
         w[i] = (i % 2 == 0) ? 1.0 : w_diag;
     }
 
@@ -49,6 +51,23 @@ NURBSCurve NURBSCurveBuilder::MakeNURBSCircle(
         0.5, 0.5,
         0.75, 0.75,
         1.0, 1.0, 1.0};
+
+    std::cout << "Knots: ";
+    for (const auto &knot : knots)
+        std::cout << knot << " ";
+    std::cout << std::endl;
+
+    std::cout << "Weights: ";
+    for (const auto &weight : w)
+        std::cout << weight << " ";
+    std::cout << std::endl;
+
+    std::cout << "Control: ";
+    for (const auto &p : ctrl)
+        std::cout << "(" << p[0] << ", " << p[1] << ", " << p[2] << ") ";
+    std::cout << std::endl;
+
+    std::cout << "Degree: 2" << std::endl;
 
     return NURBSCurve(ctrl, w, knots, 2);
 }

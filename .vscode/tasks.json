@@ -7,11 +7,17 @@
             "command": "cmake --build build/x64-windows",
             "windows": {
                 "command": "cmake",
-                "args": ["--build", "build/x64-windows"],
+                "args": [
+                    "--build",
+                    "build/x64-windows"
+                ],
                 "options": {
                     "shell": {
                         "executable": "cmd.exe",
-                        "args": ["/d", "/c"]
+                        "args": [
+                            "/d",
+                            "/c"
+                        ]
                     }
                 }
             }

@@ -32,13 +32,42 @@ struct CurveStats
     double sumObjective = 0.0;
 };
 
-void test_closest_point_curve(ParametricCurve &curve, double range = 1.0)
+void test_closest_point_curve(ParametricCurve &curve)
 {
     CurveStats stats;
 
+    auto domain = curve.domain();
+    double t_start = domain.first;
+    double t_end = domain.second;
+
+    int padIndex = 4;
+    double padding = (domain.second - domain.first) / 16;
+
+    switch (padIndex)
+    {
+    case -1: // Decrease range by moving from min/max domain extents
+    case -2:
+    case -3:
+    case -4:
+    case -5:
+    case -6:
+    case -7:
+        t_start = domain.first - padIndex * padding;
+        t_end = domain.second + padIndex * padding;
+        break;
+
+    default: // Set a t range of 0.125
+        if ((padIndex >= 0) && (padIndex < 12))
+        {
+            t_start = domain.first + padIndex * padding;
+            t_end = domain.first + (padIndex + 4) * padding;
+        }
+        break;
+    }
+
     std::random_device rd;
     std::mt19937 rng(rd());
-    std::uniform_real_distribution<double> uni(0.0, range);
+    std::uniform_real_distribution<double> uni(t_start, t_end);
     std::normal_distribution<double> noise(0.0, 0.02); // 2cm noise
 
     const int N = 100000;
@@ -73,7 +102,7 @@ void test_closest_point_curve(ParametricCurve &curve, double range = 1.0)
         double t0 = uni(rng);
 
         // 5. Run global closest-point
-        auto result = curve.closest_point_LM(Q, 0.5, 100, 1e-8);
+        auto result = curve.closest_point_LM(Q, t0, 100, 1e-8);
 
         stats.iterations += result.iterations;
 
@@ -105,7 +134,9 @@ void test_closest_point_curve(ParametricCurve &curve, double range = 1.0)
         double distPtoQ = std::sqrt(dxP * dxP + dyP * dyP + dzP * dzP);
 
         // 9. Parameter error
-        double paramErr = std::abs(result.u - t_true);
+        double raw = std::abs(result.u - t_true);
+        double period = domain.second - domain.first;
+        double paramErr = std::min(raw, period - raw);
 
         // 10. Update stats
         stats.sumDistError += distToQ;
@@ -121,6 +152,7 @@ void test_closest_point_curve(ParametricCurve &curve, double range = 1.0)
 
     // Summary
     std::cout << std::fixed << std::setprecision(6);
+    std::cout << "Range[" << padIndex << "]: (" << t_start << ", " << t_end << ")" << std::endl;
     std::cout << "Total tests     : " << stats.total << "\n";
     std::cout << "Failures        : " << stats.failures << "\n";
     std::cout << "Stagnations     : " << stats.stagnations << "\n";
@@ -175,19 +207,30 @@ void generate_data_file(ParametricCurve &curve, const char *fname)
 int main()
 {
     std::cout << "=== Testing curve closest point ===\n";
-    // auto curve = CurveBuilder::Stress(); // or any analytic test curve
-    // LineCurve curve({0.0, 0.0, 0.0}, {1.0, 1.0, 1.0});
-    // CircleCurve curve({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
 
     try
     {
+        // auto curve = CurveBuilder::Stress(); // or any analytic test curve
+        // LineCurve curve({0.0, 0.0, 0.0}, {1.0, 1.0, 1.0});
+        // CircleCurve curve({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
         NURBSCurve curve = NURBSCurveBuilder::MakeNURBSCircle({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
-        // auto domain = curve.domain();
 
-        // test_closest_point_curve(curve);
-        // generate_data_file(curve, "C:\\labs\\nurbs-lab\\plots\\data\\curve.xyz");
+        test_closest_point_curve(curve);
+        generate_data_file(curve, "C:\\labs\\nurbs-lab\\plots\\data\\curve.xyz");
 
-        // std::cout << "Domain          : [" << domain.first << ", " << domain.second << "]" << std::endl;
+        std::cout << "Derivatives at 45 degree intervals: " << std::endl;
+        for (int i = 0; i < 8; i++)
+        {
+            double t = double(i) / 8;
+
+            auto d1 = curve.derivative(t);
+            auto d2 = curve.second_derivative(t);
+
+            std::cout << "t: " << t << ", " << "d1: (" << d1[0] << ", " << d1[1] << ", " << d1[2] << "), d2: (" << d2[0] << ", " << d2[1] << ", " << d2[2] << ")" << std::endl;
+        }
+
+        auto domain = curve.domain();
+        std::cout << "Domain          : [" << domain.first << ", " << domain.second << "]" << std::endl;
     }
     catch (const std::exception &e)
     {
