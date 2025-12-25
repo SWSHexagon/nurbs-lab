@@ -28,4 +28,36 @@ namespace MathUtils
     {
         return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
     }
+
+    std::array<double, 3> add(
+        const std::array<double, 3> &a,
+        const std::array<double, 3> &b)
+    {
+        return {a[0] + b[0],
+                a[1] + b[1],
+                a[2] + b[2]};
+    }
+
+    std::array<double, 3> sub(
+        const std::array<double, 3> &a,
+        const std::array<double, 3> &b)
+    {
+        return {a[0] - b[0],
+                a[1] - b[1],
+                a[2] - b[2]};
+    }
+
+    std::array<double, 3> scale(
+        const std::array<double, 3> &a,
+        double s)
+    {
+        return {a[0] * s,
+                a[1] * s,
+                a[2] * s};
+    }
+
+    double norm(const std::array<double, 3> &a)
+    {
+        return std::sqrt(dot(a, a));
+    }
 } // namespace MathUtils

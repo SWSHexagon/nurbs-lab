@@ -3,9 +3,10 @@
 #include <numbers>
 #include <iostream>
 
-CircleCurve::CircleCurve(const std::array<double, 3> &center,
-                         const std::array<double, 3> &normal,
-                         double radius)
+CircleCurve::CircleCurve(
+    const std::array<double, 3> &center,
+    const std::array<double, 3> &normal,
+    double radius)
     : C(center), R(radius)
 {
     N = normalize(normal);

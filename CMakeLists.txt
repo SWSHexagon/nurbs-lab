@@ -36,6 +36,8 @@ add_library(nurbs
     src/parametric_surface.cpp src/parametric_surface.hpp
     src/line_curve.hpp
     src/circle_curve.cpp src/circle_curve.hpp
+    src/nurbs_curve_builder.hpp
+    src/nurbs_curve_circle.cpp
 )
 
 target_include_directories(nurbs PUBLIC src)

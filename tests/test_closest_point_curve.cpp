@@ -1,10 +1,15 @@
 #include <random>
 #include <iostream>
+#include <string>
 #include <iomanip>
 #include <chrono>
+#include <numbers>
+#include <fstream>
+#include <exception>
 #include "bspline_curve_builder.hpp"
 #include "line_curve.hpp"
 #include "circle_curve.hpp"
+#include "nurbs_curve_builder.hpp"
 
 struct CurveStats
 {
@@ -27,13 +32,13 @@ struct CurveStats
     double sumObjective = 0.0;
 };
 
-void test_closest_point_curve(ParametricCurve &curve)
+void test_closest_point_curve(ParametricCurve &curve, double range = 1.0)
 {
     CurveStats stats;
 
     std::random_device rd;
     std::mt19937 rng(rd());
-    std::uniform_real_distribution<double> uni(0.0, 1.0);
+    std::uniform_real_distribution<double> uni(0.0, range);
     std::normal_distribution<double> noise(0.0, 0.02); // 2cm noise
 
     const int N = 100000;
@@ -140,12 +145,54 @@ void test_closest_point_curve(ParametricCurve &curve)
     std::cout << "Solves per sec  : " << N / totalSeconds << "\n";
 }
 
+void generate_data_file(ParametricCurve &curve, const char *fname)
+{
+    std::ofstream outFile(fname);
+
+    if (!outFile)
+    {
+        std::cout << "Unable to open file: " << fname << std::endl;
+        return;
+    }
+
+    const int N = 1000;
+
+    auto domain = curve.domain();
+    double t_min = domain.first;
+    double t_max = domain.second;
+    double t_delta = (t_max - t_min) / N;
+
+    for (int i = 0; i < N; i++)
+    {
+        double t = t_min + i * t_delta;
+        auto p = curve.evaluate(t);
+        outFile << p[0] << " " << p[1] << " " << p[2] << std::endl;
+    }
+
+    outFile.close();
+}
+
 int main()
 {
     std::cout << "=== Testing curve closest point ===\n";
     // auto curve = CurveBuilder::Stress(); // or any analytic test curve
     // LineCurve curve({0.0, 0.0, 0.0}, {1.0, 1.0, 1.0});
-    CircleCurve curve({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
-    test_closest_point_curve(curve);
+    // CircleCurve curve({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
+
+    try
+    {
+        NURBSCurve curve = NURBSCurveBuilder::MakeNURBSCircle({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
+        // auto domain = curve.domain();
+
+        // test_closest_point_curve(curve);
+        // generate_data_file(curve, "C:\\labs\\nurbs-lab\\plots\\data\\curve.xyz");
+
+        // std::cout << "Domain          : [" << domain.first << ", " << domain.second << "]" << std::endl;
+    }
+    catch (const std::exception &e)
+    {
+        std::cout << "Exception: " << e.what() << std::endl;
+    }
+
     return 0;
 }
