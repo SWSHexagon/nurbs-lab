@@ -4,7 +4,17 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "cmake --build build"
+            "command": "cmake --build build/x64-windows",
+            "windows": {
+                "command": "cmake",
+                "args": ["--build", "build/x64-windows"],
+                "options": {
+                    "shell": {
+                        "executable": "cmd.exe",
+                        "args": ["/d", "/c"]
+                    }
+                }
+            }
         },
         {
             "type": "cppbuild",

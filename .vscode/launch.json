@@ -1,26 +1,80 @@
 {
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run Demo",
+            "name": "test_basis",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "stopAtEntry": false
-        },
-        {
-            "name": "C/C++: cl.exe build and debug active file",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${fileDirname}\\${fileBasenameNoExtension}.exe",
+            "program": "${workspaceFolder}/build/x64-windows/tests/test_basis.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}",
             "environment": [],
-            "console": "integratedTerminal",
-            "preLaunchTask": "C/C++: cl.exe build active file"
+            "console": "externalTerminal",
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "test_curve",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/x64-windows/tests/test_curve.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "externalTerminal",
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "test_surface",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/x64-windows/tests/test_surface.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "externalTerminal",
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "test_closest_point",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/x64-windows/tests/test_closest_point.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "externalTerminal",
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "test_closest_point_curve",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/x64-windows/tests/test_closest_point_curve.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "externalTerminal",
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "test_sphere_curvature",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/x64-windows/tests/test_sphere_curvature.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "externalTerminal",
+            "preLaunchTask": "build"
         }
     ]
 }
