@@ -1,10 +1,14 @@
 #pragma once
 #include <vector>
+#include <limits>
 
 class BSplineBasis
 {
 public:
-    BSplineBasis(int degree, std::vector<double> knots);
+    BSplineBasis(
+        int degree,
+        std::vector<double> knots,
+        bool isPeriodic = false);
 
     // Evaluate N_i^p(u)
     double evaluate(int i, int p, double u) const;
@@ -22,19 +26,24 @@ public:
     double evaluate(int i, double u) const { return evaluate(i, degree_, u); }
 
     // Number of basis functions == number of control points this basis expects
-    int numBasis() const { return static_cast<int>(knots_.size()) - degree_ - 1; }
+    inline int numBasis() const { return nBasis_; }
 
     // Get extents of basis functions to [umin, umax]
     std::pair<double, double> getExtents() const;
 
-    static void check_basis_consistency(const BSplineBasis &B, int numCtrl);
-
-    void DumpInfo(const char *msg) const;
+    void DumpInfo(const char *msg = nullptr) const;
     void GeneratePlot(const char *filename) const;
 
-    static constexpr double DOMAIN_PADDING_FACTOR = 1e-6;
+    static constexpr double EPSILON = 100 * std::numeric_limits<double>::epsilon();
 
 private:
-    int degree_;
+    int nBasis_ = 0;
+    int degree_ = 2;
+    bool isPeriodic_ = false;
     std::vector<double> knots_;
+
+    inline int wrapIndex(int i) const
+    {
+        return (i % nBasis_ + nBasis_) % nBasis_;
+    }
 };

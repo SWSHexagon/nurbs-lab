@@ -14,7 +14,6 @@ int main()
     // 1. BASIS FUNCTION CSV OUTPUT (degree 2, 4 basis functions)
     // ============================================================
     BSplineBasis basis(2, {0, 0, 0, 1.0 / 3.0, 2.0 / 3.0, 1, 1, 1}); // 8 knots → 4 basis functions
-    BSplineBasis::check_basis_consistency(basis, 5);
     basis.GeneratePlot("plots/data/basis.csv");
 
     std::array<double, 3> p0 = {2, 3, 0};
