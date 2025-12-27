@@ -11,7 +11,8 @@ public:
     NURBSCurve(std::vector<std::array<double, 3>> control_points,
                std::vector<double> weights,
                std::vector<double> knots,
-               int degree);
+               int degree,
+               bool is_periodic = false);
 
     std::array<double, 3> evaluate(double t) const override;
     std::array<double, 3> derivative(double t) const override;

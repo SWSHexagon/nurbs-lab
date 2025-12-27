@@ -1,6 +1,7 @@
 #pragma once
 
 #include "closest_point_result.hpp"
+#include "math_utils.hpp"
 #include <array>
 #include <utility>
 
@@ -39,13 +40,10 @@ protected:
     double t_min = 0;
     double t_max = 1;
 
+    bool m_is_periodic = false;
+
     void project_to_domain(double &t) const;
     virtual void initialize_domain() = 0;
 
-    static double dot(const std::array<double, 3> &a, const std::array<double, 3> &b);
-    static std::array<double, 3> sub(const std::array<double, 3> &a, const std::array<double, 3> &b);
-    static std::array<double, 3> add(const std::array<double, 3> &a, const std::array<double, 3> &b);
-    static std::array<double, 3> scale(const std::array<double, 3> &a, double s);
-    static double norm(const std::array<double, 3> &a);
-    static std::array<double, 3> normalize(const std::array<double, 3> &a);
+    void set_periodic(bool is_Periodic) { m_is_periodic = is_Periodic; }
 };

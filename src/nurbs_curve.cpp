@@ -1,14 +1,18 @@
 #include "nurbs_curve.hpp"
+#include "math_utils.hpp"
 #include <cassert>
 #include <iostream>
+
+using namespace MathUtils;
 
 NURBSCurve::NURBSCurve(std::vector<std::array<double, 3>> control_points,
                        std::vector<double> weights,
                        std::vector<double> knots,
-                       int degree)
-    : m_ctrl(std::move(control_points)), m_w(std::move(weights)), m_knots(std::move(knots)),
-      m_degree(degree), m_basis(m_degree, m_knots) // or whatever your BSplineBasis ctor is
+                       int degree,
+                       bool is_periodic)
+    : m_ctrl(std::move(control_points)), m_w(std::move(weights)), m_knots(std::move(knots)), m_degree(degree), m_basis(m_degree, m_knots, is_periodic)
 {
+    set_periodic(is_periodic);
     initialize_domain();
 }
 
@@ -46,9 +50,8 @@ std::array<double, 3> NURBSCurve::evaluate(double t) const
 
     for (int i = 0; i < n; ++i)
     {
-        double Ni = m_basis.evaluate(i, tc); // <-- YOUR API
+        double Ni = m_basis.evaluate(i, tc);
         double Ni_wi = Ni * m_w[i];
-
         S = add(S, scale(m_ctrl[i], Ni_wi));
         W += Ni_wi;
     }
@@ -165,7 +168,15 @@ std::array<double, 3> NURBSCurve::normal(double t) const
 void NURBSCurve::DumpInfo() const
 {
     std::cout << "NURBSCurve:\n";
-    std::cout << "  Degree: " << m_degree << "\n";
-    std::cout << "  Control points: " << m_ctrl.size() << "\n";
-    std::cout << "  Domain: [" << t_min << ", " << t_max << "]\n";
+    std::cout << "  Degree        : " << m_degree << std::endl;
+    std::cout << "  Domain        : [" << t_min << ", " << t_max << "]" << std::endl;
+    std::cout << "  Is periodic   : " << (m_is_periodic ? "True" : "False") << std::endl;
+    std::cout << "  Control points: " << m_ctrl.size() << std::endl;
+    for (int i = 0; i < m_ctrl.size(); i++)
+        std::cout << "    (" << m_ctrl[i][0] << ", " << m_ctrl[i][1] << ", " << m_ctrl[i][2] << ")" << std::endl;
+    std::cout << "  Weights size  : " << m_w.size() << std::endl;
+    for (int i = 0; i < m_w.size(); i++)
+        std::cout << "    " << m_w[i] << std::endl;
+    std::cout << "===============" << std::endl;
+    m_basis.DumpInfo();
 }

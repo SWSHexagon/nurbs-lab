@@ -1,6 +1,9 @@
 #pragma once
 
 #include "parametric_curve.hpp"
+#include "math_utils.hpp"
+
+using namespace MathUtils;
 
 class LineCurve : public ParametricCurve
 {

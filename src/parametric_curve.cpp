@@ -1,42 +1,18 @@
 #include "parametric_curve.hpp"
+#include "math_utils.hpp"
 #include <cmath>
 #include <algorithm>
 
-double ParametricCurve::dot(const std::array<double, 3> &a, const std::array<double, 3> &b)
-{
-    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-
-std::array<double, 3> ParametricCurve::sub(const std::array<double, 3> &a, const std::array<double, 3> &b)
-{
-    return {a[0] - b[0], a[1] - b[1], a[2] - b[2]};
-}
-
-std::array<double, 3> ParametricCurve::add(const std::array<double, 3> &a, const std::array<double, 3> &b)
-{
-    return {a[0] + b[0], a[1] + b[1], a[2] + b[2]};
-}
-
-std::array<double, 3> ParametricCurve::scale(const std::array<double, 3> &a, double s)
-{
-    return {a[0] * s, a[1] * s, a[2] * s};
-}
-
-double ParametricCurve::norm(const std::array<double, 3> &a)
-{
-    return std::sqrt(dot(a, a));
-}
-
-std::array<double, 3> ParametricCurve::normalize(const std::array<double, 3> &a)
-{
-    double n = norm(a);
-    if (n < NEAR_ZERO)
-        return {0, 0, 0};
-    return {a[0] / n, a[1] / n, a[2] / n};
-}
+using namespace MathUtils;
 
 void ParametricCurve::project_to_domain(double &t) const
 {
+    if (m_is_periodic)
+    {
+        t = WrapToInterval(t, t_min, t_max);
+        return;
+    }
+
     t = std::clamp(t, t_min, t_max);
 }
 
@@ -98,12 +74,17 @@ ClosestPointResult ParametricCurve::closest_point_LM(
         // Convergence by gradient norm
         if (gradNorm < tol)
         {
-            bool finalOnBoundary =
-                (t <= tol || t >= 1.0 - tol);
+            if (!m_is_periodic)
+            {
+                bool finalOnBoundary = (t < t_min + tol || t > t_max - tol);
 
-            result.status = finalOnBoundary
-                                ? ClosestPointResult::Status::Boundary
-                                : ClosestPointResult::Status::Success;
+                result.status = finalOnBoundary
+                                    ? ClosestPointResult::Status::Boundary
+                                    : ClosestPointResult::Status::Success;
+            }
+            else
+                result.status = ClosestPointResult::Status::Success;
+
             break;
         }
 
@@ -221,8 +202,7 @@ ClosestPointResult ParametricCurve::closest_point_LM(
             // Additional convergence check on step size
             if (stepNorm < tol)
             {
-                bool finalOnBoundary =
-                    (t <= tol || t >= 1.0 - tol);
+                bool finalOnBoundary = (t < t_min + tol || t > t_max - tol);
 
                 result.status = finalOnBoundary
                                     ? ClosestPointResult::Status::Boundary
@@ -247,23 +227,34 @@ ClosestPointResult ParametricCurve::closest_point_LM(
 
     project_to_domain(t_best);
     auto C_final = evaluate(t_best);
+    auto Cp_final = derivative(t_best);
     auto r_final = sub(C_final, P);
     double dist = norm(r_final);
+
+    // Set gradient at t_best
+    double g_final = dot(r_final, Cp_final);
+    double gradNorm_final = std::abs(abs(g_final));
+    result.gradNorm = gradNorm_final;
 
     result.t() = t_best;
     result.point3D = C_final;
     result.distance = dist;
     result.bestObjective = f_best;
 
-    result.onBoundary = (t_best <= tol || t_best >= 1.0 - tol);
+    result.onBoundary = (t_best < t_min + tol || t_best > t_max - tol);
 
-    // If no status was set inside the loop, it means we exited by maxIters
-    if (result.status != ClosestPointResult::Status::Success &&
-        result.status != ClosestPointResult::Status::Boundary &&
-        result.status != ClosestPointResult::Status::Stagnation &&
-        result.status != ClosestPointResult::Status::Divergence)
+    // Stagnation at a point with gradient essentially zero is success
+    if (result.status == ClosestPointResult::Status::Stagnation &&
+        gradNorm_final < tol * 10)
     {
-        result.status = ClosestPointResult::Status::MaxIterations;
+        if (!m_is_periodic)
+        {
+            result.status = result.onBoundary
+                                ? ClosestPointResult::Status::Boundary
+                                : ClosestPointResult::Status::Success;
+        }
+        else
+            result.status = ClosestPointResult::Status::Success;
     }
 
     return result;

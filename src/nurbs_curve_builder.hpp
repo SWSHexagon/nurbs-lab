@@ -8,4 +8,6 @@ namespace NURBSCurveBuilder
         const std::array<double, 3> &center,
         const std::array<double, 3> &normal,
         double radius);
+
+    NURBSCurve MakeNURBSPeriodicCircle(double radius);
 }

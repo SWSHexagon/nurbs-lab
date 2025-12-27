@@ -30,6 +30,8 @@ struct CurveStats
 
     double maxObjective = 0.0;
     double sumObjective = 0.0;
+
+    double sumStagnationGradients = 0.0;
 };
 
 void test_closest_point_curve(ParametricCurve &curve)
@@ -39,31 +41,6 @@ void test_closest_point_curve(ParametricCurve &curve)
     auto domain = curve.domain();
     double t_start = domain.first;
     double t_end = domain.second;
-
-    int padIndex = 4;
-    double padding = (domain.second - domain.first) / 16;
-
-    switch (padIndex)
-    {
-    case -1: // Decrease range by moving from min/max domain extents
-    case -2:
-    case -3:
-    case -4:
-    case -5:
-    case -6:
-    case -7:
-        t_start = domain.first - padIndex * padding;
-        t_end = domain.second + padIndex * padding;
-        break;
-
-    default: // Set a t range of 0.125
-        if ((padIndex >= 0) && (padIndex < 12))
-        {
-            t_start = domain.first + padIndex * padding;
-            t_end = domain.first + (padIndex + 4) * padding;
-        }
-        break;
-    }
 
     std::random_device rd;
     std::mt19937 rng(rd());
@@ -92,13 +69,23 @@ void test_closest_point_curve(ParametricCurve &curve)
         // 2. True point on curve
         auto P = curve.evaluate(t_true);
 
-        // 3. Perturb to create noisy query Q
+        // 3. Offset a random amount along curve normal outside circumference
+        auto curveNorm = curve.second_derivative(t_true);
+
+        double d = -std::uniform_real_distribution<double>(0.1, 1.0)(rng);
+
         std::array<double, 3> Q = {
-            P[0] + noise(rng),
-            P[1] + noise(rng),
-            P[2] + noise(rng)};
+            P[0] + d * curveNorm[0],
+            P[1] + d * curveNorm[1],
+            P[2] + d * curveNorm[2]};
+
+        double len = std::sqrt(dot(Q, Q));
+
+        if (len < 1)
+            throw std::runtime_error("test_closest_point_curve: unexpected test point");
 
         // 4. Random initial guess
+        // double t0 = t_true + 0.2 * uni(rng);
         double t0 = uni(rng);
 
         // 5. Run global closest-point
@@ -114,20 +101,21 @@ void test_closest_point_curve(ParametricCurve &curve)
             stats.maxObjective = std::max(stats.maxObjective, result.bestObjective);
             stats.sumObjective += result.bestObjective;
             stats.numValid++;
+            stats.sumStagnationGradients += result.gradNorm;
         }
         else if (result.status == ClosestPointResult::Status::Divergence)
             stats.divergences++;
 
         // 6. Evaluate recovered point
-        auto Pest = curve.evaluate(result.u);
+        auto Pest = result.point3D;
 
-        // 7. Distance from Q to recovered closest point
+        // 7. Distance from resolved point to Q
         double dx = Pest[0] - Q[0];
         double dy = Pest[1] - Q[1];
         double dz = Pest[2] - Q[2];
         double distToQ = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-        // 8. Distance from true point to Q
+        // 8. Distance from seed point to Q
         double dxP = P[0] - Q[0];
         double dyP = P[1] - Q[1];
         double dzP = P[2] - Q[2];
@@ -146,28 +134,36 @@ void test_closest_point_curve(ParametricCurve &curve)
         stats.maxParamError = std::max(stats.maxParamError, paramErr);
 
         // 11. Failure detection
+        // distToQ   - distance from seed point on curve to offset point
+        // distPttoQ - distance from resolved point to offset point
         if (distToQ > distPtoQ + 1e-6)
             stats.failures++;
     }
 
     // Summary
-    std::cout << std::fixed << std::setprecision(6);
-    std::cout << "Range[" << padIndex << "]: (" << t_start << ", " << t_end << ")" << std::endl;
-    std::cout << "Total tests     : " << stats.total << "\n";
-    std::cout << "Failures        : " << stats.failures << "\n";
-    std::cout << "Stagnations     : " << stats.stagnations << "\n";
-    std::cout << "Divergences     : " << stats.divergences << "\n";
-    std::cout << "Max iterations  : " << stats.maxiterations << "\n";
-    std::cout << "Avg Iterations  : " << double(stats.iterations) / stats.total << "\n";
-    std::cout << "Mean dist error : " << stats.sumDistError / stats.total << "\n";
-    std::cout << "Max dist error  : " << stats.maxDistError << "\n";
-    std::cout << "Mean param error: " << stats.sumParamError / stats.total << "\n";
-    std::cout << "Max param error : " << stats.maxParamError << "\n";
+    std::cout << std::scientific << std::setprecision(6);
+    std::cout << "Range             : (" << t_start << ", " << t_end << ")" << std::endl;
+    std::cout << "Tolerance         : " << 1e-8 << std::endl;
+    std::cout << "Total tests       : " << stats.total << "\n";
+    std::cout << "Failures          : " << stats.failures << "\n";
+    std::cout << "Stagnations       : " << stats.stagnations << "\n";
+    std::cout << "Divergences       : " << stats.divergences << "\n";
+    std::cout << "Max iterations    : " << stats.maxiterations << "\n";
+    std::cout << "Avg Iterations    : " << double(stats.iterations) / stats.total << "\n";
+    std::cout << "Mean point offset : " << stats.sumDistError / stats.total << "\n";
+    std::cout << "Max point offset  : " << stats.maxDistError << "\n";
+    std::cout << "Mean param error  : " << stats.sumParamError / stats.total << "\n";
+    std::cout << "Max param error   : " << stats.maxParamError << "\n";
 
     if (stats.numValid > 0)
     {
         std::cout << "Mean objective  : " << stats.sumObjective / stats.numValid << "\n";
         std::cout << "Max objective   : " << stats.maxObjective << "\n";
+    }
+
+    if (stats.stagnations > 0)
+    {
+        std::cout << "Avg stag grads  : " << stats.sumStagnationGradients / stats.stagnations << "\n";
     }
 
     auto end = std::chrono::steady_clock::now();
@@ -212,16 +208,20 @@ int main()
     {
         // auto curve = CurveBuilder::Stress(); // or any analytic test curve
         // LineCurve curve({0.0, 0.0, 0.0}, {1.0, 1.0, 1.0});
-        // CircleCurve curve({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
-        NURBSCurve curve = NURBSCurveBuilder::MakeNURBSCircle({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
+        CircleCurve curve({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
+        // NURBSCurve curve = NURBSCurveBuilder::MakeNURBSCircle({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
+        // NURBSCurve curve = NURBSCurveBuilder::MakeNURBSPeriodicCircle(1.0);
 
         test_closest_point_curve(curve);
         generate_data_file(curve, "C:\\labs\\nurbs-lab\\plots\\data\\curve.xyz");
 
+        auto domain = curve.domain();
+        double domainDelta = (domain.second - domain.first) / 8;
+
         std::cout << "Derivatives at 45 degree intervals: " << std::endl;
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 9; i++)
         {
-            double t = double(i) / 8;
+            double t = domain.first + double(i) * domainDelta;
 
             auto d1 = curve.derivative(t);
             auto d2 = curve.second_derivative(t);
@@ -229,8 +229,9 @@ int main()
             std::cout << "t: " << t << ", " << "d1: (" << d1[0] << ", " << d1[1] << ", " << d1[2] << "), d2: (" << d2[0] << ", " << d2[1] << ", " << d2[2] << ")" << std::endl;
         }
 
-        auto domain = curve.domain();
         std::cout << "Domain          : [" << domain.first << ", " << domain.second << "]" << std::endl;
+
+        curve.DumpInfo();
     }
     catch (const std::exception &e)
     {

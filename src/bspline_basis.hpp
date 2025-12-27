@@ -46,4 +46,20 @@ private:
     {
         return (i % nBasis_ + nBasis_) % nBasis_;
     }
+
+    inline double knot(int i) const
+    {
+        const int m = static_cast<int>(knots_.size());
+        if (isPeriodic_)
+        {
+            int k = i % m;
+            if (k < 0)
+                k += m;
+            return knots_[k];
+        }
+        else
+        {
+            return knots_[i];
+        }
+    }
 };

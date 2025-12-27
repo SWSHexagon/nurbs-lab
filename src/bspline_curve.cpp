@@ -1,7 +1,10 @@
 #include "bspline_curve.hpp"
+#include "math_utils.hpp"
 #include <cmath>
 #include <iostream>
 #include <iomanip>
+
+using namespace MathUtils;
 
 BSplineCurve::BSplineCurve(
     BSplineBasis basis,

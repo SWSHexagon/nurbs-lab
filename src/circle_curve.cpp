@@ -1,7 +1,10 @@
 #include "circle_curve.hpp"
+#include "math_utils.hpp"
 #include <cmath>
 #include <numbers>
 #include <iostream>
+
+using namespace MathUtils;
 
 CircleCurve::CircleCurve(
     const std::array<double, 3> &center,
@@ -22,6 +25,7 @@ CircleCurve::CircleCurve(
                    N[0] * U[1] - N[1] * U[0]});
 
     initialize_domain();
+    set_periodic(true);
 }
 
 void CircleCurve::initialize_domain()
