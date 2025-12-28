@@ -39,6 +39,7 @@ add_library(nurbs
     src/nurbs_curve_builder.hpp
     src/nurbs_curve_circle.cpp
     src/nurbs_curve_periodic_circle.cpp
+    src/nurbs_curve_cubic_circle.cpp
 )
 
 target_include_directories(nurbs PUBLIC src)

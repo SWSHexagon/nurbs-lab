@@ -31,6 +31,8 @@ struct CurveStats
     double maxObjective = 0.0;
     double sumObjective = 0.0;
 
+    double sumOffset = 0.0;
+
     double sumStagnationGradients = 0.0;
 };
 
@@ -46,6 +48,7 @@ void test_closest_point_curve(ParametricCurve &curve)
     std::mt19937 rng(rd());
     std::uniform_real_distribution<double> uni(t_start, t_end);
     std::normal_distribution<double> noise(0.0, 0.02); // 2cm noise
+    std::uniform_real_distribution<double> radialOffset(0.8, 1.2);
 
     const int N = 100000;
     auto start = std::chrono::steady_clock::now();
@@ -68,21 +71,7 @@ void test_closest_point_curve(ParametricCurve &curve)
 
         // 2. True point on curve
         auto P = curve.evaluate(t_true);
-
-        // 3. Offset a random amount along curve normal outside circumference
-        auto curveNorm = curve.second_derivative(t_true);
-
-        double d = -std::uniform_real_distribution<double>(0.1, 1.0)(rng);
-
-        std::array<double, 3> Q = {
-            P[0] + d * curveNorm[0],
-            P[1] + d * curveNorm[1],
-            P[2] + d * curveNorm[2]};
-
-        double len = std::sqrt(dot(Q, Q));
-
-        if (len < 1)
-            throw std::runtime_error("test_closest_point_curve: unexpected test point");
+        auto Q = scale(P, radialOffset(rng));
 
         // 4. Random initial guess
         // double t0 = t_true + 0.2 * uni(rng);
@@ -110,16 +99,17 @@ void test_closest_point_curve(ParametricCurve &curve)
         auto Pest = result.point3D;
 
         // 7. Distance from resolved point to Q
-        double dx = Pest[0] - Q[0];
-        double dy = Pest[1] - Q[1];
-        double dz = Pest[2] - Q[2];
-        double distToQ = std::sqrt(dx * dx + dy * dy + dz * dz);
+        double dx = Pest[0] - P[0];
+        double dy = Pest[1] - P[1];
+        double dz = Pest[2] - P[2];
+        double distErr = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-        // 8. Distance from seed point to Q
-        double dxP = P[0] - Q[0];
-        double dyP = P[1] - Q[1];
-        double dzP = P[2] - Q[2];
-        double distPtoQ = std::sqrt(dxP * dxP + dyP * dyP + dzP * dzP);
+        dx = Pest[0] - Q[0];
+        dy = Pest[1] - Q[1];
+        dz = Pest[2] - Q[2];
+        double ptOffset = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+        stats.sumOffset += ptOffset;
 
         // 9. Parameter error
         double raw = std::abs(result.u - t_true);
@@ -127,16 +117,14 @@ void test_closest_point_curve(ParametricCurve &curve)
         double paramErr = std::min(raw, period - raw);
 
         // 10. Update stats
-        stats.sumDistError += distToQ;
-        stats.maxDistError = std::max(stats.maxDistError, distToQ);
+        stats.sumDistError += distErr;
+        stats.maxDistError = std::max(stats.maxDistError, distErr);
 
         stats.sumParamError += paramErr;
         stats.maxParamError = std::max(stats.maxParamError, paramErr);
 
         // 11. Failure detection
-        // distToQ   - distance from seed point on curve to offset point
-        // distPttoQ - distance from resolved point to offset point
-        if (distToQ > distPtoQ + 1e-6)
+        if (distErr > 1e-3)
             stats.failures++;
     }
 
@@ -150,8 +138,9 @@ void test_closest_point_curve(ParametricCurve &curve)
     std::cout << "Divergences       : " << stats.divergences << "\n";
     std::cout << "Max iterations    : " << stats.maxiterations << "\n";
     std::cout << "Avg Iterations    : " << double(stats.iterations) / stats.total << "\n";
-    std::cout << "Mean point offset : " << stats.sumDistError / stats.total << "\n";
-    std::cout << "Max point offset  : " << stats.maxDistError << "\n";
+    std::cout << "Mean point error  : " << stats.sumDistError / stats.total << "\n";
+    std::cout << "Max point error   : " << stats.maxDistError << "\n";
+    std::cout << "Mean point offset : " << stats.sumOffset / stats.total << "\n";
     std::cout << "Mean param error  : " << stats.sumParamError / stats.total << "\n";
     std::cout << "Max param error   : " << stats.maxParamError << "\n";
 
@@ -211,6 +200,7 @@ int main()
         CircleCurve curve({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
         // NURBSCurve curve = NURBSCurveBuilder::MakeNURBSCircle({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, 1.0);
         // NURBSCurve curve = NURBSCurveBuilder::MakeNURBSPeriodicCircle(1.0);
+        // NURBSCurve curve = NURBSCurveBuilder::MakeNURBSCubicCircle({0.0, 0.0, 0.0}, {0.0, 0.0, 0.1}, 1.0);
 
         test_closest_point_curve(curve);
         generate_data_file(curve, "C:\\labs\\nurbs-lab\\plots\\data\\curve.xyz");

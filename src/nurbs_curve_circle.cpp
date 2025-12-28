@@ -40,7 +40,14 @@ NURBSCurve NURBSCurveBuilder::MakeNURBSCircle(
 
     for (int i = 0; i < 9; ++i)
     {
-        ctrl[i] = add(center, scale(ctrl[i], radius));
+        // ctrl[i] = add(center, scale(ctrl[i], radius));
+        auto px = ctrl[i][0];
+        auto py = ctrl[i][1];
+
+        ctrl[i] = add(center,
+                      add(scale(u, radius * px),
+                          scale(v, radius * py)));
+
         w[i] = (i % 2 == 0) ? 1.0 : w_diag;
     }
 
@@ -69,5 +76,5 @@ NURBSCurve NURBSCurveBuilder::MakeNURBSCircle(
 
     std::cout << "Degree: 2" << std::endl;
 
-    return NURBSCurve(ctrl, w, knots, 2);
+    return NURBSCurve(ctrl, w, knots, 2, true);
 }
